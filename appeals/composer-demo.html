@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nimbir appeal composer — demo (D-nimbir-appeal-engine)</title>
+<style>
+  :root {
+    --ink: #17242C;
+    --canvas: #F6F7F4;
+    --paper: #FFFFFF;
+    --line: #DCE3E0;
+    --mint: #B9F0D3;
+    --teal: #126E68;
+    --amber: #A86A1B;
+    --rose: #B44B59;
+    --muted: #60717A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 16px/1.55 Inter, system-ui, -apple-system, sans-serif;
+  }
+  code, .mono, .fn, .deadline, .cpt { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header.top {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header.top h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+  header.top .scope {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 28px 64px;
+    display: grid;
+    grid-template-columns: 300px 1fr 300px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .panel h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .scenario-list { display: flex; flex-direction: column; gap: 4px; }
+  .scenario-list button {
+    text-align: left;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+  .scenario-list button:hover { border-color: var(--line); background: var(--canvas); }
+  .scenario-list button.active { background: var(--mint); border-color: var(--teal); font-weight: 600; }
+  .scenario-list .num { color: var(--muted); font-size: 0.75rem; margin-right: 4px; }
+
+  .route-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .route-corrected_claim { background: #E4F0EC; color: var(--teal); }
+  .route-reopening { background: #EEF2E4; color: #5B7236; }
+  .route-redetermination { background: #FBEFE0; color: var(--amber); }
+  .route-appeal { background: #F7E4E6; color: var(--rose); }
+  .route-documentation_query { background: #EDEBF5; color: #534B9A; }
+  .route-none { background: var(--line); color: var(--muted); }
+
+  .letter {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .letter h2 { font-size: 1.15rem; margin: 0 0 6px; }
+  .letter p { margin: 0 0 14px; }
+  .letter .needs { background: #FCE9CC; color: #7A4A0C; padding: 0 3px; border-radius: 3px; }
+  sup.fn { color: var(--teal); font-weight: 700; margin-left: 1px; }
+  sup.fn a { color: inherit; text-decoration: none; }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar button {
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .toolbar button:hover { background: var(--canvas); }
+
+  .checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .checklist li { font-size: 0.85rem; display: flex; gap: 8px; align-items: flex-start; }
+  .checklist .mark { flex: 0 0 auto; font-weight: 700; width: 16px; text-align: center; }
+  .checklist .pass .mark { color: var(--teal); }
+  .checklist .fail .mark { color: var(--rose); }
+  .checklist .detail { color: var(--muted); }
+
+  .missing-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .missing-list li {
+    font-size: 0.82rem;
+    background: #FCE9CC;
+    color: #7A4A0C;
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .missing-empty { color: var(--muted); font-size: 0.85rem; }
+
+  .sources-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .sources-list li { font-size: 0.82rem; }
+  .sources-list .n { color: var(--teal); font-weight: 700; margin-right: 4px; }
+  .sources-list a { color: var(--teal); }
+
+  footer.disclosure {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 28px 48px;
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+  .err { color: var(--rose); font-size: 0.85rem; white-space: pre-wrap; }
+
+  @media print {
+    header.top, .toolbar, aside.panel:first-of-type, footer.disclosure { display: none !important; }
+    body { background: #fff; }
+    .shell { grid-template-columns: 1fr 280px; max-width: none; padding: 0; }
+    .letter, .panel { border: none; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Nimbir appeal composer — demo</h1>
+  <div class="scope">Deterministic templates + codes.json slot-filling. No LLM at runtime. Draft output only; nothing here has been submitted to a payer.</div>
+</header>
+
+<div class="shell">
+  <aside class="panel">
+    <h2>Cardiology scenarios (CARDIO_BUYER.md)</h2>
+    <div class="scenario-list" id="scenario-list"></div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <span class="route-badge route-none" id="route-badge">—</span>
+      <button id="btn-copy">Copy letter (.md)</button>
+      <button id="btn-download">Download .md</button>
+      <button id="btn-print">Print</button>
+    </div>
+    <div class="letter" id="letter-body">
+      <p class="err" id="load-error" hidden></p>
+    </div>
+  </main>
+
+  <aside class="panel">
+    <h2>Pre-flight readiness</h2>
+    <ul class="checklist" id="preflight-list"></ul>
+    <h2 style="margin-top:18px;">Missing inputs</h2>
+    <ul class="missing-list" id="missing-list"></ul>
+    <h2 style="margin-top:18px;">Sources</h2>
+    <ul class="sources-list" id="sources-list"></ul>
+  </aside>
+</div>
+
+<footer class="disclosure">
+  Illustrative demo. CARC/RARC text and CMS manual quotes are pulled verbatim from app/appeals/codes.json
+  (sourced from x12.org and cms.gov; see codes.json._meta.sources). LCD/article excerpts shown here are the
+  excerpts entered into each fixture below, for demonstration — confirm the current LCD text before any real use.
+  Every bracketed <code>[NEEDS: ...]</code> span marks a fact the composer was not given and did not invent.
+</footer>
+
+<script src="./compose.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // The 10 CARDIO_BUYER.md scenarios (plus the scenario-7 negative control),
+  // transcribed from app/appeals/cardio-buyer-scenarios.test.js so the demo
+  // and the test suite stay in lockstep.
+  var FIXTURES = [
+    {
+      id: 's1', title: '1. TTE + Doppler/color-flow bundling',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: '93306', dos: '2026-08-01', icd10: ['R01.1'] }, { cpt: '93320', dos: '2026-08-01', icd10: ['R01.1'] }, { cpt: '93325', dos: '2026-08-01', icd10: ['R01.1'] }], ptp_indicator: 0, ptp_column2_cpt: '93320' },
+        denial: { group: 'CO', carc: '97' }
+      }
+    },
+    {
+      id: 's2', title: '2. TTE for uncomplicated HTN (no chart narrative yet)',
+      input: {
+        claim: { payer: 'Medicare (Wellpoint Federal J6/JK)', lines: [{ cpt: '93306', dos: '2026-08-01', icd10: ['I10'] }] },
+        denial: { group: 'CO', carc: '50', rarc: 'N115' },
+        citation: { source: 'Wellpoint Federal LCD L33577 / Article A56781', id: 'L33577', url: 'https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?lcdid=33577', excerpt: 'Routine evaluation of patients with systemic hypertension without suspected hypertensive heart disease is not covered.' }
+      }
+    },
+    {
+      id: 's3', title: '3. Annual re-echo, mild AS, documented interval change',
+      input: {
+        claim: { payer: 'Medicare (Wellpoint Federal J6/JK)', lines: [{ cpt: '93306', dos: '2026-08-01', icd10: ['I35.0'] }], medical_necessity_narrative: 'Interval history documents new exertional dyspnea since the prior echocardiogram eleven months ago.', remit_date: '2026-08-15' },
+        denial: { group: 'CO', carc: '50', rarc: 'N115' },
+        citation: { source: 'Wellpoint Federal LCD L33577 / Article A56781', id: 'L33577', url: 'https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?lcdid=33577', excerpt: 'Routine (yearly) re-evaluation of an asymptomatic patient with mild native aortic stenosis without change is not covered.' }
+      }
+    },
+    {
+      id: 's4', title: '4. Stress echo + exercise ECG bundling',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: '93351', dos: '2026-08-01', icd10: ['I25.10'] }, { cpt: '93015', dos: '2026-08-01', icd10: ['I25.10'] }], ptp_indicator: 0, ptp_column2_cpt: '93015' },
+        denial: { group: 'CO', carc: '97' }
+      }
+    },
+    {
+      id: 's5', title: '5. Post-PCI screening stress test, no documented symptom',
+      input: {
+        claim: { payer: 'Medicare (Novitas JH/JL)', lines: [{ cpt: '78452', dos: '2026-08-01', icd10: ['Z95.5', 'I25.10'] }] },
+        denial: { group: 'CO', carc: '50', rarc: 'N115' },
+        citation: { source: 'Novitas LCD L35083 / Article A56423', id: 'L35083', url: 'https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?LCDId=35083', excerpt: 'Exercise testing or radiologic imaging within the first 2 years following PCI without specific symptoms is not reasonable and necessary.' }
+      }
+    },
+    {
+      id: 's6', title: '6. Pre-op stress test, documented high-risk + low METs',
+      input: {
+        claim: { payer: 'Medicare (Novitas JH/JL)', lines: [{ cpt: '78452', dos: '2026-08-01', icd10: ['Z01.810'] }], medical_necessity_narrative: 'Surgical consult documents a high-risk vascular procedure and functional capacity below 4 METs.', remit_date: '2026-08-12' },
+        denial: { group: 'CO', carc: '50', rarc: 'N115' },
+        citation: { source: 'Novitas LCD L35083', id: 'L35083', url: 'https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?LCDId=35083', excerpt: 'Pre-operative evaluation for low risk noncardiac surgery is not covered; high-risk surgery requires documented functional capacity under 4 METs or unknown capacity.' }
+      }
+    },
+    {
+      id: 's7', title: '7. Regadenoson units over MUE (clerical dosing error)',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: 'J2785', units: 5, dos: '2026-08-01', icd10: ['I25.10'] }], unit_error_type: 'clerical', units_billed: 5, units_correct: 4 },
+        denial: { group: 'CO', carc: '151', rarc: 'N362' }
+      }
+    },
+    {
+      id: 's7c', title: '7 (control). 78452+93015+J2785×4 — clean, no denial',
+      input: { claim: { payer: 'Medicare', lines: [{ cpt: 'J2785', units: 4, dos: '2026-08-01' }, { cpt: '78452', dos: '2026-08-01' }, { cpt: '93015', dos: '2026-08-01' }] } }
+    },
+    {
+      id: 's8a', title: '8a. Simultaneous 48h Holter + 7-day monitor',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: '93224', dos: '2026-08-01', icd10: ['R00.2'] }, { cpt: '93241', dos: '2026-08-01', icd10: ['R00.2'] }], ptp_indicator: 0, ptp_column2_cpt: '93241' },
+        denial: { group: 'CO', carc: '97' }
+      }
+    },
+    {
+      id: 's8b', title: '8b. Holter billed with an inconsistent 26 modifier',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: '93224', modifiers: ['26'], dos: '2026-08-01', icd10: ['R00.2'] }] },
+        denial: { group: 'CO', carc: '4' }
+      }
+    },
+    {
+      id: 's9', title: '9. Duplicate remote device interrogation <90 days',
+      input: {
+        claim: { payer: 'Medicare', lines: [{ cpt: '93296', dos: '2026-08-15', icd10: ['Z95.0'] }] },
+        denial: { group: 'CO', carc: '119' }
+      }
+    },
+    {
+      id: 's10', title: '10. Commercial echo, no prior auth (eviCore plan)',
+      input: {
+        claim: { payer: 'Commercial (eviCore-managed cardiology)', lines: [{ cpt: '93306', dos: '2026-08-01', icd10: ['I25.10'] }] },
+        denial: { group: 'CO', carc: '197' }
+      }
+    }
+  ];
+
+  var listEl = document.getElementById('scenario-list');
+  var letterEl = document.getElementById('letter-body');
+  var loadErrorEl = document.getElementById('load-error');
+  var badgeEl = document.getElementById('route-badge');
+  var preflightEl = document.getElementById('preflight-list');
+  var missingEl = document.getElementById('missing-list');
+  var sourcesEl = document.getElementById('sources-list');
+
+  var CODES = null;
+  var CURRENT = null; // { fixture, result }
+
+  function sourceInfoFor(ref, input) {
+    if (ref === 'missing_input') return null;
+    if (ref.indexOf('boilerplate#') === 0) {
+      return { label: 'Nimbir fixed clause (codes.json#boilerplate.' + ref.slice('boilerplate#'.length) + ')', url: null };
+    }
+    if (ref.indexOf('codes.json#carc.') === 0) {
+      var ccode = ref.slice('codes.json#carc.'.length);
+      return { label: 'X12 CARC ' + ccode, url: 'https://x12.org/codes/claim-adjustment-reason-codes' };
+    }
+    if (ref.indexOf('codes.json#rarc.') === 0) {
+      var rcode = ref.slice('codes.json#rarc.'.length);
+      return { label: 'X12 RARC ' + rcode, url: 'https://x12.org/codes/remittance-advice-remark-codes' };
+    }
+    if (ref.indexOf('codes.json#cms_manual.') === 0) {
+      var mkey = ref.slice('codes.json#cms_manual.'.length);
+      var entry = CODES.cms_manual[mkey];
+      return { label: 'CMS IOM Pub 100-04, Ch.34' + (entry && entry.section ? ', ' + entry.section : ''), url: entry ? entry.url : null };
+    }
+    if (ref === 'citation.excerpt') {
+      var c = input.citation;
+      return { label: c ? c.source + (c.id ? ' (' + c.id + ')' : '') : 'cited coverage policy', url: c ? c.url : null };
+    }
+    if (ref.indexOf('claim.') === 0) {
+      return { label: 'Claim data supplied to the composer (' + ref + ')', url: null };
+    }
+    return { label: ref, url: null };
+  }
+
+  function renderLetter(result, input) {
+    var sourceIndex = new Map();
+    var sourceList = [];
+
+    function footnoteFor(ref) {
+      var info = sourceInfoFor(ref, input);
+      if (!info) return { n: null, info: null };
+      if (!sourceIndex.has(ref)) {
+        sourceIndex.set(ref, sourceList.length + 1);
+        sourceList.push(Object.assign({ ref: ref }, info));
+      }
+      return { n: sourceIndex.get(ref), info: info };
+    }
+
+    if (!result.letter_markdown) {
+      return { html: '<p class="err">No letter was composed: ' + escapeHtml((result.preflight[0] && result.preflight[0].detail) || 'no denial supplied') + '</p>', sources: [] };
+    }
+
+    var paragraphs = result.letter_markdown.split('\n\n');
+    var htmlParts = paragraphs.map(function (p) {
+      if (p.indexOf('# ') === 0) return '<h2>' + escapeHtml(p.slice(2)) + '</h2>';
+      var relevant = result.sentences
+        .filter(function (s) { return p.indexOf(s.text) !== -1; })
+        .sort(function (a, b) { return b.text.length - a.text.length; });
+      var html = escapeHtml(p);
+      relevant.forEach(function (s) {
+        var escaped = escapeHtml(s.text);
+        if (html.indexOf(escaped) === -1) return;
+        if (s.source_ref === 'missing_input') {
+          html = html.split(escaped).join('<span class="needs">' + escaped + '</span>');
+          return;
+        }
+        var fn = footnoteFor(s.source_ref);
+        var marker = fn.n ? '<sup class="fn">[' + fn.n + ']</sup>' : '';
+        html = html.split(escaped).join('<span>' + escaped + '</span>' + marker);
+      });
+      return '<p>' + html + '</p>';
+    });
+
+    return { html: htmlParts.join('\n'), sources: sourceList };
+  }
+
+  function renderPreflight(preflight) {
+    preflightEl.innerHTML = '';
+    preflight.forEach(function (p) {
+      var li = document.createElement('li');
+      li.className = p.pass ? 'pass' : 'fail';
+      li.innerHTML = '<span class="mark">' + (p.pass ? '✓' : '✗') + '</span>' +
+        '<span><strong>' + escapeHtml(p.check) + '</strong><br><span class="detail">' + escapeHtml(p.detail) + '</span></span>';
+      preflightEl.appendChild(li);
+    });
+  }
+
+  function renderMissing(missing) {
+    missingEl.innerHTML = '';
+    if (!missing.length) {
+      var empty = document.createElement('li');
+      empty.className = 'missing-empty';
+      empty.textContent = 'Nothing missing — every slot in this letter was supplied.';
+      missingEl.appendChild(empty);
+      return;
+    }
+    missing.forEach(function (m) {
+      var li = document.createElement('li');
+      li.textContent = m;
+      missingEl.appendChild(li);
+    });
+  }
+
+  function renderSources(sources) {
+    sourcesEl.innerHTML = '';
+    if (!sources.length) {
+      var li0 = document.createElement('li');
+      li0.textContent = 'No cited sources on this letter.';
+      sourcesEl.appendChild(li0);
+      return;
+    }
+    sources.forEach(function (s, i) {
+      var li = document.createElement('li');
+      var link = s.url ? '<a href="' + s.url + '" target="_blank" rel="noopener">' + escapeHtml(s.label) + '</a>' : escapeHtml(s.label);
+      li.innerHTML = '<span class="n">[' + (i + 1) + ']</span>' + link;
+      sourcesEl.appendChild(li);
+    });
+  }
+
+  function select(fixture) {
+    Array.prototype.forEach.call(listEl.querySelectorAll('button'), function (b) {
+      b.classList.toggle('active', b.dataset.id === fixture.id);
+    });
+    var result;
+    try {
+      result = window.NimbirAppealComposer.compose(fixture.input, CODES);
+    } catch (e) {
+      letterEl.innerHTML = '<p class="err">compose() threw: ' + escapeHtml(e.message) + '</p>';
+      badgeEl.textContent = 'ERROR';
+      badgeEl.className = 'route-badge route-none';
+      preflightEl.innerHTML = '';
+      missingEl.innerHTML = '';
+      sourcesEl.innerHTML = '';
+      return;
+    }
+    CURRENT = { fixture: fixture, result: result };
+    badgeEl.textContent = result.route || 'no denial';
+    badgeEl.className = 'route-badge route-' + (result.route || 'none');
+    var rendered = renderLetter(result, fixture.input);
+    letterEl.innerHTML = rendered.html;
+    renderPreflight(result.preflight);
+    renderMissing(result.missing_inputs);
+    renderSources(rendered.sources);
+  }
+
+  function boot() {
+    FIXTURES.forEach(function (fx) {
+      var btn = document.createElement('button');
+      btn.dataset.id = fx.id;
+      btn.innerHTML = escapeHtml(fx.title);
+      btn.addEventListener('click', function () { select(fx); });
+      listEl.appendChild(btn);
+    });
+    select(FIXTURES[0]);
+  }
+
+  fetch('./codes.json')
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' fetching codes.json');
+      return r.json();
+    })
+    .then(function (json) {
+      CODES = json;
+      boot();
+    })
+    .catch(function (e) {
+      loadErrorEl.hidden = false;
+      loadErrorEl.textContent = 'Could not load codes.json: ' + e.message + '\nThis page must be served over HTTP (e.g. `python3 -m http.server`) — fetch() of a local file does not work from a file:// URL.';
+    });
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    if (!CURRENT || !CURRENT.result.letter_markdown) return;
+    navigator.clipboard.writeText(CURRENT.result.letter_markdown).catch(function () {});
+  });
+  document.getElementById('btn-download').addEventListener('click', function () {
+    if (!CURRENT || !CURRENT.result.letter_markdown) return;
+    var blob = new Blob([CURRENT.result.letter_markdown], { type: 'text/markdown' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'nimbir-appeal-' + CURRENT.fixture.id + '-' + CURRENT.result.route + '.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+  document.getElementById('btn-print').addEventListener('click', function () { window.print(); });
+}());
+</script>
+</body>
+</html>

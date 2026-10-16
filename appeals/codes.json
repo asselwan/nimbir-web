@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "purpose": "Source-of-truth CARC/RARC text and fixed CMS citations for app/appeals/compose.js. Every string here was pulled from the primary source listed, not written from memory, so compose.js can quote verbatim and cite a URL for every sentence it generates.",
+    "retrieved": "2026-10-05",
+    "sources": [
+      { "id": "x12-carc", "title": "X12 Claim Adjustment Reason Codes", "url": "https://x12.org/codes/claim-adjustment-reason-codes" },
+      { "id": "x12-rarc", "title": "X12 Remittance Advice Remark Codes", "url": "https://x12.org/codes/remittance-advice-remark-codes" },
+      { "id": "cms-clm104c34", "title": "CMS Internet-Only Manual, Pub. 100-04, Chapter 34 (Reopenings)", "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c34.pdf" }
+    ]
+  },
+  "carc": {
+    "4": { "text": "The procedure code is inconsistent with the modifier used. Usage: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.", "start": "01/01/1995", "last_modified": "03/01/2020", "source": "x12-carc" },
+    "15": { "text": "The authorization number is missing, invalid, or does not apply to the billed services or provider.", "start": "01/01/1995", "last_modified": "11/01/2017", "stop": "05/01/2018", "source": "x12-carc" },
+    "16": { "text": "Claim/service lacks information or has submission/billing error(s). Usage: Do not use this code for claims attachment(s)/other documentation. At least one Remark Code must be provided (may be comprised of either the NCPDP Reject Reason Code, or Remittance Advice Remark Code that is not an ALERT.) Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.", "start": "01/01/1995", "last_modified": "03/01/2018", "source": "x12-carc" },
+    "18": { "text": "Exact duplicate claim/service (Use only with Group Code OA except where state workers' compensation regulations requires CO)", "start": "01/01/1995", "last_modified": "06/02/2013", "source": "x12-carc" },
+    "29": { "text": "The time limit for filing has expired.", "start": "01/01/1995", "source": "x12-carc" },
+    "50": { "text": "These are non-covered services because this is not deemed a 'medical necessity' by the payer. Usage: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.", "start": "01/01/1995", "last_modified": "07/01/2017", "source": "x12-carc" },
+    "97": { "text": "The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Usage: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.", "start": "01/01/1995", "last_modified": "07/01/2017", "source": "x12-carc" },
+    "119": { "text": "Benefit maximum for this time period or occurrence has been reached.", "start": "01/01/1995", "last_modified": "02/29/2004", "source": "x12-carc" },
+    "125": { "text": "Submission/billing error(s). At least one Remark Code must be provided (may be comprised of either the NCPDP Reject Reason Code, or Remittance Advice Remark Code that is not an ALERT.)", "start": "01/01/1995", "last_modified": "09/20/2009", "stop": "11/01/2013", "source": "x12-carc" },
+    "136": { "text": "Failure to follow prior payer's coverage rules. (Use only with Group Code OA)", "start": "10/31/1998", "last_modified": "07/01/2013", "source": "x12-carc" },
+    "151": { "text": "Payment adjusted because the payer deems the information submitted does not support this many/frequency of services.", "start": "10/31/2002", "last_modified": "01/27/2008", "source": "x12-carc" },
+    "197": { "text": "Precertification/authorization/notification/pre-treatment absent.", "start": "10/31/2006", "last_modified": "05/01/2018", "source": "x12-carc" },
+    "236": { "text": "This procedure or procedure/modifier combination is not compatible with another procedure or procedure/modifier combination provided on the same day according to the National Correct Coding Initiative or workers compensation state regulations/ fee schedule requirements.", "start": "01/30/2011", "last_modified": "07/01/2013", "source": "x12-carc" }
+  },
+  "rarc": {
+    "M86": { "text": "Service denied because payment already made for same/similar procedure within set time frame.", "start": "01/01/1997", "last_modified": "06/30/2003", "source": "x12-rarc" },
+    "N115": { "text": "This decision was based on a Local Coverage Determination (LCD). An LCD provides a guide to assist in determining whether a particular item or service is covered. A copy of this policy is available at www.cms.gov/mcd, or if you do not have web access, you may contact the contractor to request a copy of the LCD.", "start": "05/30/2002", "last_modified": "07/01/2010", "source": "x12-rarc" },
+    "N362": { "text": "The number of Days or Units of Service exceeds our acceptable maximum.", "start": "11/18/2005", "source": "x12-rarc" }
+  },
+  "cms_manual": {
+    "clerical_error_reopening": {
+      "text": "42 CFR 405.927 and 405.980(a)(3) require that clerical errors be processed as reopenings rather than appeals.",
+      "source": "cms-clm104c34",
+      "section": "10.4 - Reopenings Based on Clerical or Minor Errors and Omissions",
+      "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c34.pdf"
+    },
+    "clerical_error_definition": {
+      "text": "CMS defines clerical errors (including minor errors or omissions) as human or mechanical errors on the part of the party or the contractor, such as transposed procedure or diagnostic codes, inaccurate data entry, or incorrect data items, such as provider number, use of a modifier or date of service.",
+      "source": "cms-clm104c34",
+      "section": "10.4 - Reopenings Based on Clerical or Minor Errors and Omissions",
+      "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c34.pdf"
+    },
+    "redetermination_120_day": {
+      "text": "The request for a redetermination must be filed within 120 days from the date of the revised initial determination.",
+      "source": "cms-clm104c34",
+      "section": "10.10/10.11 - Revision of an Initial Determination",
+      "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c34.pdf"
+    }
+  },
+  "boilerplate": {
+    "draft_notice": "Draft for human review. This document has not been submitted. Confirm claim and member identifiers, payer policy, clinical documentation, and attachments before sending. No coverage, payment, or appeal outcome is asserted.",
+    "not_an_appeal_notice": "This is an internal correction note, not an appeal; it is used to resubmit a corrected claim or request a reopening, and no appeal rights are being invoked for this line.",
+    "doc_query_notice": "This is an internal documentation request to the ordering clinician, not a letter to the payer, and it must not be sent to the payer in this form.",
+    "salutation_payer": "Dear Claims Review Team,",
+    "ptp_indicator_0_warning": "A modifier indicator of 0 means no modifier, including 59, XE, XS, XP, or XU, may ever be appended to separate these two codes for payment.",
+    "ptp_indicator_0_warning_2": "Appending one of those modifiers to force separate payment would be an improper unbundling, not a correction.",
+    "ptp_indicator_1_note": "A modifier indicator of 1 means a modifier may separate these codes only when the medical record documents that the two services were clinically distinct, so confirm that support before resubmitting with a modifier rather than dropping the column-2 code.",
+    "duplicate_void_note": "This line duplicates a previously submitted and adjudicated line, so it should be voided or withdrawn rather than resubmitted.",
+    "frequency_void_note": "This line exceeds the benefit or frequency maximum for the period, so the line that falls outside the allowed period should be voided and the period start and end date confirmed before any future billing.",
+    "corrected_claim_closing": "This is a correction to resubmit, not a request for appeal or reconsideration.",
+    "generic_clerical_note": "This denial reflects a minor, correctable error in form or content rather than a coverage or medical-necessity dispute.",
+    "reopening_request": "We request that this line be corrected through the reopening process described above rather than through the formal appeals process.",
+    "redetermination_request": "Based on the documentation above, we request that the denial be reversed and the claim reprocessed for payment.",
+    "timely_filing_request": "We request that the timely-filing denial be reversed on the strength of the attached proof of original, timely submission.",
+    "mue_necessity_request": "We request that the units billed be reconsidered and paid in light of the documented medical necessity above.",
+    "mue_no_necessity_warning": "Without documented medical necessity for the units billed, this line should not be appealed; it should be corrected or written off instead.",
+    "prior_auth_request": "We request review of the prior-authorization requirement for this line and reprocessing if an exception or retroactive authorization applies.",
+    "doc_query_ask": "Before this line can be appealed, please confirm whether the medical record documents the specific finding, symptom, or change required by the policy cited above.",
+    "doc_query_branch": "If the record supports it, we will file a redetermination citing that documentation; if it does not, we will write the line off or bill the patient only where a valid Advance Beneficiary Notice is on file.",
+    "closing_payer_facing": "Sincerely,\nAuthorized provider appeals representative — signature and contact details to be completed after review.",
+    "closing_internal": "Prepared for internal review, not for payer submission in this form; add the preparer's name before filing."
+  }
+}
