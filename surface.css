@@ -71,3 +71,17 @@ tbody tr[data-state] td:first-child{box-shadow:inset 3px 0 0 transparent}tbody t
 /* Pass 3: sorting, repeated reason count, and compact encounter source. */
 .queue-controls .sort-label{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}.queue-controls #claim-sort{min-height:34px;max-width:230px;border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--paper);color:var(--ink);font-size:12px}.similar-count{display:inline-block;margin-top:5px;padding:2px 7px;border:1px solid #cfe5db;border-radius:999px;background:#eef8f1;color:var(--teal);font-size:10px;font-weight:750;white-space:nowrap}.timeline #evidence-source{overflow-wrap:anywhere}.timeline .evidence-copy{display:inline-block;margin:5px 0 0 6px;vertical-align:middle}
 @media(max-width:650px){.queue-controls #claim-sort{flex:1;max-width:none}}
+/* rail trajectory (design-iterate 2026-10-21, prm_4b706785) */
+.rail-route{margin:30px 13px 0}
+.rail-route-label{display:block;color:#8fa6a2;font-size:10px;font-weight:800;letter-spacing:.1em;margin-bottom:12px}
+.rail-route ol{list-style:none;margin:0;padding:0}
+.rail-route li{position:relative;padding:0 0 16px 20px;font-size:11px;font-weight:600;color:#8fa6a2;transition:color .2s}
+.rail-route li::before{content:"";position:absolute;left:0;top:1px;width:9px;height:9px;border-radius:50%;background:#31454a;border:2px solid #46606a;box-sizing:border-box;transition:all .2s}
+.rail-route li::after{content:"";position:absolute;left:3.5px;top:13px;bottom:1px;width:2px;background:#31454a}
+.rail-route li:last-child{padding-bottom:0}
+.rail-route li:last-child::after{display:none}
+.rail-route li.done{color:#c6d8d3}
+.rail-route li.done::before{background:#4c8f7f;border-color:#4c8f7f}
+.rail-route li.current{color:var(--mint)}
+.rail-route li.current::before{background:var(--mint);border-color:var(--mint);box-shadow:0 0 8px var(--mint)}
+@media(max-width:900px){.rail-route{display:none}}
