@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260" role="img" aria-label="A claim's path: billed, down into a denial, back up through appeal to paid on the 835; a dashed write-off line shows where it ends with no appeal">
+<!-- prm_4594c690-0d04-4a04-bac9-a85de3164443 D-0web3d-nimbir: no-WebGL fallback for the 835-path hero -->
+<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#126e68"/><stop offset=".36" stop-color="#126e68"/><stop offset=".44" stop-color="#c4475b"/><stop offset=".64" stop-color="#e8735a"/><stop offset=".82" stop-color="#3fbf8f"/></linearGradient></defs>
+<g stroke="#cdd8d3" stroke-width="1"><path d="M40 230H760M80 215H720"/></g>
+<path d="M330 186C430 200 560 205 700 206" fill="none" stroke="#c4475b" stroke-opacity=".5" stroke-width="2" stroke-dasharray="9 7"/>
+<path d="M70 92C150 90 230 90 330 186C380 170 420 140 460 132C560 120 630 96 700 92" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round"/>
+<path d="M738 200V104" stroke="#17242c" stroke-width="2"/><path d="M730 108l8-16 8 16z" fill="#17242c"/>
+<g><circle cx="70" cy="92" r="9" fill="#126e68"/><circle cx="330" cy="186" r="9" fill="#c4475b"/><circle cx="460" cy="132" r="9" fill="#e8735a"/><circle cx="700" cy="92" r="9" fill="#3fbf8f"/></g>
+</svg>
