@@ -108,6 +108,106 @@ function renderRisk(c) {
   setText('risk-other', risk.otherChecks.join(' · '));
   setText('risk-score', risk.score);
 }
+// --- Verification chips (D-0trawl-steal-1, prm_eb07b4a6 v13) ------------------------------
+// The contract lives in verification-chip.js (shared, dependency-free, lifted from the
+// Trawl/Reckon engine). This block only maps THIS claim's real recorded drivers onto it.
+const VC = window.NomoiVerificationChip;
+// This preview cannot reserve primary-source verification, so it honestly declares a
+// below-flagship tier: primary-source checks are withheld here, never softened.
+const VC_TIER = 'standard';
+const vcBudget = { remaining: 2 };
+let vcStyleDone = false;
+const vcQueued = new Set();
+function claimChecks(c) {
+  const drivers = (c.review_drivers || []).map(String);
+  const checks = [];
+  const citation = drivers.find(d => /sha256:/i.test(d));
+  if (citation) {
+    const contradicted = drivers.some(d => /rule valid_from is after/i.test(d));
+    checks.push({
+      label: 'Tariff rule citation',
+      state: contradicted ? VC.STATES.CONTRADICTED : VC.STATES.VERIFIED,
+      note: contradicted ? 'Rule valid_from is after the claim date — the cited source disagrees with this use.' : 'Hash-verified citation recorded in this claim’s source drivers.'
+    });
+  }
+  const setting = drivers.find(d => /^sv-stay-setting:/i.test(d));
+  if (setting) checks.push({ label: 'Setting check', state: VC.STATES.QUALIFIED, note: 'Check ran with a stated caveat: ' + setting });
+  if (riskSignal(c)) checks.push({ label: 'Denial-risk rank', state: VC.STATES.UNCHECKED, note: 'Uncalibrated demo scorer output; no verification stands behind it yet.' });
+  const payer = drivers.find(d => /^EXPLORATORY: payer code/i.test(d));
+  if (payer) checks.push({ label: 'Payer identity', state: VC.STATES.UNCHECKED, needsPrimarySource: true, note: payer });
+  return checks;
+}
+function vcSpendCheck(label) {
+  if (vcBudget.remaining <= 0) return;
+  vcBudget.remaining--;
+  vcQueued.add(label);
+  if (vcBudget.remaining === 0) {
+    const card = VC.budgetExhaustionCard(selected ? selected.claim_id : 'this claim');
+    const box = document.createElement('p');
+    box.className = 'vc-card';
+    box.textContent = card.text;
+    document.getElementById('vc-notes').append(box);
+  }
+  renderClaimChecks(selected);
+}
+function renderClaimChecks(c) {
+  if (!VC) return;
+  if (!vcStyleDone) {
+    const style = document.createElement('style');
+    style.textContent = VC.CSS;
+    document.head.append(style);
+    vcStyleDone = true;
+  }
+  const section = document.getElementById('claim-checks');
+  const chips = document.getElementById('vc-chips');
+  const notes = document.getElementById('vc-notes');
+  chips.replaceChildren();
+  notes.replaceChildren();
+  const checks = c ? claimChecks(c) : [];
+  section.hidden = !checks.length;
+  if (!checks.length) return;
+  for (const check of checks) {
+    const verdict = VC.chipFor(check, VC_TIER);
+    if (verdict.withheld) {
+      const row = document.createElement('p');
+      row.className = 'vc-withheld';
+      row.textContent = verdict.reason;
+      notes.append(row);
+      continue;
+    }
+    const chip = document.createElement('span');
+    chip.className = 'vc-chip ' + verdict.className;
+    const glyph = document.createElement('span');
+    glyph.className = 'vc-g';
+    glyph.textContent = verdict.glyph;
+    chip.append(glyph, document.createTextNode(verdict.word));
+    chip.title = check.note || '';
+    if (verdict.state === VC.STATES.UNCHECKED) {
+      if (vcQueued.has(check.label)) {
+        const done = document.createElement('small');
+        done.textContent = ' · queued for the pilot verification mission';
+        chip.append(done);
+      } else {
+        const promo = VC.promotionAction(vcBudget.remaining);
+        const add = (spec) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'vc-promote';
+          b.textContent = spec.label;
+          b.title = spec.note || '';
+          b.addEventListener('click', () => {
+            if (spec.action === 'check-this-claim') vcSpendCheck(check.label);
+            else vcQueued.add(check.label), renderClaimChecks(selected);
+          });
+          chip.append(b);
+        };
+        if (promo.action === 'check-this-claim') add(promo);
+        else promo.options.forEach(add);
+      }
+    }
+    chips.append(chip);
+  }
+}
 const matchesSearch = (c, query) => !query ||
   [c.claim_id,c.review_reason,c.owner,c.state,c.payer,c.denial_category].some(value => String(value ?? '').toLowerCase().includes(query));
 function span(className, text) {
@@ -338,6 +438,7 @@ function choose(c) {
   renderEvidenceSource(c.evidence_source || 'Source not supplied');
   renderDrivers(c);
   renderRisk(c);
+  renderClaimChecks(c);
   document.getElementById('simulate-approve').disabled = c.state === 'Blocked';
   document.getElementById('simulate-evidence').disabled = false;
   renderDecisionLog();
