@@ -1,0 +1,12 @@
+{
+  "name": "nimbir-web",
+  "private": true,
+  "scripts": {
+    "start": "node workspace/server.js",
+    "test:workspace": "node --test workspace/*.test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.0",
+    "pg": "^8.20.0"
+  }
+}

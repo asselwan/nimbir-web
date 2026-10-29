@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nimbir hospital workspace</title><link rel="stylesheet" href="/workspace/style.css">
+<main><header><strong>Nimbir</strong><span>Hospital workspace · synthetic pilot</span></header>
+<section class="intro"><p class="eyebrow">Work queue</p><h1>Every item has an owner and a due time.</h1><p>Sign in with your hospital account. This local pilot accepts synthetic records only.</p></section>
+<form id="connect"><label>Email <input id="email" type="email" autocomplete="username" required></label><label>Password <input id="password" type="password" autocomplete="current-password" required></label><button>Open workspace</button></form>
+<section id="workspace" hidden><div class="bar"><label>Hospital <select id="hospital"></select></label><button id="refresh" type="button">Refresh</button></div><p id="message" role="status"></p><div class="table-wrap"><table><thead><tr><th>Type / reference</th><th>Work</th><th>Owner</th><th>Status</th><th>SLA due</th><th>Audit</th></tr></thead><tbody id="items"></tbody></table></div></section>
+</main><script src="/workspace/app.js" defer></script></html>
