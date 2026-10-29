@@ -18,6 +18,7 @@
 import pg from 'pg';
 import { createStore } from './store.js';
 import { createApp } from './server.js';
+import { assertSyntheticTarget } from './synthetic-target.js';
 
 const HARNESS = '1';
 const hospitalId = '11111111-1111-4111-8111-111111111111';
@@ -27,19 +28,6 @@ const password = 'synthetic-pass';
 
 function fail(message) { console.error(`FAIL ${message}`); process.exitCode = 1; }
 function pass(message) { console.log(`ok ${message}`); }
-
-function databaseName(url) {
-  try { return decodeURIComponent(new URL(url).pathname.replace(/^\//, '')); } catch { return ''; }
-}
-
-// This harness truncates the workspace tables, so it refuses to touch anything
-// that is not recognisably a disposable synthetic database.
-function assertSyntheticTarget(runtime, owner) {
-  const name = databaseName(runtime);
-  if (!name || name !== databaseName(owner)) throw new Error(`refusing to truncate: runtime database ${name || 'unknown'} and owner database ${databaseName(owner) || 'unknown'} differ`);
-  if (!/(synthetic|staging|test)/i.test(name)) throw new Error(`refusing to truncate database "${name}": the name does not look like a disposable synthetic database`);
-  return name;
-}
 
 // Playwright is a harness-only dependency and is deliberately not in package.json.
 // Look for it in the usual places instead of assuming one machine's layout.
@@ -52,28 +40,35 @@ async function loadPlaywright() {
 }
 
 async function main() {
-  if (process.env.NIMBIR_SYNTHETIC_HARNESS !== HARNESS) throw new Error('refusing to run without NIMBIR_SYNTHETIC_HARNESS=1');
   const runtimeUrl = process.env.DATABASE_URL;
   const ownerUrl = process.env.SEED_DATABASE_URL;
   if (!runtimeUrl || !ownerUrl) throw new Error('DATABASE_URL and SEED_DATABASE_URL are required');
+  const harness = process.env.NIMBIR_SYNTHETIC_HARNESS === HARNESS;
+  // Fail closed before any pool is created or any statement runs: explicit
+  // flag plus exact allowlisted local disposable target (see synthetic-target.js).
+  assertSyntheticTarget({ harness, runtimeUrl, ownerUrl });
 
+  // Both pools are retained so the finally block can always end them, even
+  // when setup itself fails partway.
   const owner = new pg.Pool({ connectionString: ownerUrl, max: 2 });
-  assertSyntheticTarget(runtimeUrl, ownerUrl);
-  await owner.query(`INSERT INTO nimbir.hospital (id, name) VALUES ($1, 'Synthetic Hospital Alpha') ON CONFLICT (id) DO NOTHING`, [hospitalId]);
-  await owner.query(`INSERT INTO nimbir.hospital_member (hospital_id, user_id, role) VALUES ($1, $2, 'admin') ON CONFLICT DO NOTHING`, [hospitalId, userId]);
-  await owner.query('TRUNCATE nimbir.work_item_audit, nimbir.work_item RESTART IDENTITY CASCADE');
-
-  const app = createApp({
-    store: createStore(new pg.Pool({ connectionString: runtimeUrl, max: 4 })),
-    authenticate: async (token) => (token === 'synthetic-harness-token' ? userId : null),
-    signIn: async (givenEmail, givenPassword) => (givenEmail === email && givenPassword === password ? 'synthetic-harness-token' : null),
-  });
-  await new Promise((resolve) => app.listen(0, '127.0.0.1', resolve));
-  const base = `http://127.0.0.1:${app.address().port}`;
-
-  const { chromium } = await loadPlaywright();
-  const browser = await chromium.launch({ args: ['--no-sandbox'] });
+  const runtime = new pg.Pool({ connectionString: runtimeUrl, max: 4 });
+  let app;
+  let browser;
   try {
+    await owner.query(`INSERT INTO nimbir.hospital (id, name) VALUES ($1, 'Synthetic Hospital Alpha') ON CONFLICT (id) DO NOTHING`, [hospitalId]);
+    await owner.query(`INSERT INTO nimbir.hospital_member (hospital_id, user_id, role) VALUES ($1, $2, 'admin') ON CONFLICT DO NOTHING`, [hospitalId, userId]);
+    await owner.query('TRUNCATE nimbir.work_item_audit, nimbir.work_item RESTART IDENTITY CASCADE');
+
+    app = createApp({
+      store: createStore(runtime),
+      authenticate: async (token) => (token === 'synthetic-harness-token' ? userId : null),
+      signIn: async (givenEmail, givenPassword) => (givenEmail === email && givenPassword === password ? 'synthetic-harness-token' : null),
+    });
+    await new Promise((resolve) => app.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${app.address().port}`;
+
+    const { chromium } = await loadPlaywright();
+    browser = await chromium.launch({ args: ['--no-sandbox'] });
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(String(error)));
@@ -120,8 +115,9 @@ async function main() {
     if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
     else pass('no page errors');
   } finally {
-    await browser.close();
-    await new Promise((resolve) => app.close(resolve));
+    if (browser) await browser.close().catch(() => {});
+    if (app) await new Promise((resolve) => app.close(resolve));
+    await runtime.end();
     await owner.end();
   }
 }

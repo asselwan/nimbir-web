@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import { createStore, HttpError, kinds, statuses } from './store.js';
 import { createApp } from './server.js';
+import { assertSyntheticTarget } from './synthetic-target.js';
 
 const runtimeUrl = process.env.DATABASE_URL;
 const ownerUrl = process.env.SEED_DATABASE_URL;
@@ -12,7 +13,12 @@ const userAlpha = '33333333-3333-4333-8333-333333333333';
 const userBeta = '44444444-4444-4444-8444-444444444444';
 const userOutsider = '55555555-5555-4555-8555-555555555555';
 
-const skip = runtimeUrl && ownerUrl ? false : 'set DATABASE_URL and SEED_DATABASE_URL to a migrated staging database';
+// Fail closed: these tests truncate tables, so they refuse to run unless the
+// explicit harness flag is set AND both URLs are pinned to the exact local
+// disposable staging database (checked per destructive run by the shared guard).
+const skip = runtimeUrl && ownerUrl && process.env.NIMBIR_SYNTHETIC_HARNESS === '1'
+  ? false
+  : 'set NIMBIR_SYNTHETIC_HARNESS=1, DATABASE_URL and SEED_DATABASE_URL to the local disposable staging database';
 
 // One pool per role, reused for the whole run: a fresh pool per call leaks sockets
 // and, worse, hides stale session state that a reused connection would expose.
@@ -31,23 +37,12 @@ async function withClient(url, fn) {
   try { return await fn(client); } finally { client.release(); }
 }
 
-function databaseName(url) {
-  try { return decodeURIComponent(new URL(url).pathname.replace(/^\//, '')); } catch { return ''; }
-}
-
-// These tests truncate the workspace tables. They must only ever run against a
-// disposable synthetic database, so the target is checked by name before any
-// destructive statement is issued.
-function assertSyntheticTarget() {
-  const runtime = databaseName(runtimeUrl);
-  const owner = databaseName(ownerUrl);
-  if (!runtime || runtime !== owner) throw new Error(`refusing to truncate: runtime database ${runtime || 'unknown'} and owner database ${owner || 'unknown'} differ`);
-  if (!/(synthetic|staging|test)/i.test(runtime)) throw new Error(`refusing to truncate database "${runtime}": the name does not look like a disposable synthetic database`);
-  return runtime;
-}
-
+// The destructive-target guard lives in ./synthetic-target.js and is shared
+// with the browser smoke harness. It requires the explicit harness flag, exact
+// host/port/database match against the allowlisted disposable local target, and
+// the absence of URL query parameters and libpq override variables.
 async function reset() {
-  assertSyntheticTarget();
+  assertSyntheticTarget({ harness: process.env.NIMBIR_SYNTHETIC_HARNESS === '1', runtimeUrl, ownerUrl });
   await withClient(ownerUrl, async (db) => {
     await db.query('TRUNCATE nimbir.work_item_audit, nimbir.work_item RESTART IDENTITY CASCADE');
     await db.query('TRUNCATE nimbir.hospital_member, nimbir.hospital CASCADE');
@@ -209,6 +204,80 @@ test('a title the database would reject is reported as bad input, not a server e
   const store = createStore(poolFor(runtimeUrl));
   await assert.rejects(store.create(hospitalAlpha, userAlpha, { kind: 'denial', source_ref: 'SYN-CLAIM-A8', title: 'Synthetic ', sla_due_at: '2026-11-01T12:00:00Z' }), (error) => error instanceof HttpError && error.status === 400);
   await assert.rejects(store.create(hospitalAlpha, userAlpha, { kind: 'denial', source_ref: 'SYN-CLAIM-A9', title: 'Not synthetic at all', sla_due_at: '2026-11-01T12:00:00Z' }), (error) => error instanceof HttpError && error.status === 400);
+});
+
+test('actor context does not survive commit or rollback on a pooled connection', { skip }, async () => {
+  await reset();
+  const seen = await withClient(runtimeUrl, async (db) => {
+    const afterCommit = await (async () => {
+      await db.query('BEGIN');
+      await db.query("SELECT set_config('nimbir.actor_id', $1, true)", [userAlpha]);
+      const inside = (await db.query("SELECT current_setting('nimbir.actor_id', true) AS v")).rows[0].v;
+      await db.query('COMMIT');
+      return { inside, after: (await db.query("SELECT current_setting('nimbir.actor_id', true) AS v")).rows[0].v };
+    })();
+    const afterRollback = await (async () => {
+      await db.query('BEGIN');
+      await db.query("SELECT set_config('nimbir.actor_id', $1, true)", [userBeta]);
+      // A failed statement inside the transaction forces the rollback path the
+      // store takes when a write is rejected.
+      await db.query('SELECT 1/0').catch(() => {});
+      await db.query('ROLLBACK');
+      return (await db.query("SELECT current_setting('nimbir.actor_id', true) AS v")).rows[0].v;
+    })();
+    return { afterCommit, afterRollback };
+  });
+  assert.equal(seen.afterCommit.inside, userAlpha);
+  assert.equal(seen.afterCommit.after, '');
+  assert.equal(seen.afterRollback, '');
+  // And the same connection now sees no rows without a fresh actor context.
+  const rows = await withClient(runtimeUrl, async (db) => (await db.query('SELECT count(*)::int AS n FROM nimbir.work_item')).rows[0]);
+  assert.equal(rows.n, 0);
+});
+
+test('the migration policies and grants match the intended tenant and audit boundaries', { skip }, async () => {
+  await reset();
+  const policies = await withClient(ownerUrl, async (db) => (await db.query(`
+    SELECT policyname, cmd, roles, qual, with_check
+    FROM pg_policies WHERE schemaname = 'nimbir' ORDER BY policyname`)).rows);
+  assert.equal(policies.length, 6);
+  // Every policy is scoped to the app role only...
+  for (const policy of policies) assert.deepEqual(policy.roles, '{nimbir_workspace_app}');
+  // ...and every USING / WITH CHECK clause scopes rows through the
+  // transaction-local actor — either via a hospital_member membership probe or,
+  // on hospital_member itself, by matching the actor to the member row.
+  for (const policy of policies) {
+    for (const clause of [policy.qual, policy.with_check]) {
+      if (clause) assert.match(clause, /current_setting\('nimbir\.actor_id'[^)]*, true\)/);
+    }
+  }
+  const memberRead = policies.find((policy) => policy.policyname === 'member_read');
+  assert.match(memberRead.qual, /user_id =/);
+  for (const policy of policies) {
+    if (policy.policyname === 'member_read') continue;
+    for (const clause of [policy.qual, policy.with_check]) {
+      if (clause) assert.match(clause, /hospital_member/);
+    }
+  }
+  // The append-only audit table has no UPDATE/DELETE grant at all, and the
+  // runtime role holds exactly the grants the migration intends.
+  const grants = await withClient(ownerUrl, async (db) => (await db.query(`
+    SELECT table_name, string_agg(privilege_type, ',' ORDER BY privilege_type) AS privs
+    FROM information_schema.role_table_grants
+    WHERE grantee IN ('nimbir_workspace_app', 'nimbir_workspace_runtime') AND table_schema = 'nimbir'
+    GROUP BY table_name ORDER BY table_name`)).rows);
+  assert.deepEqual(grants, [
+    { table_name: 'hospital', privs: 'SELECT' },
+    { table_name: 'hospital_member', privs: 'SELECT' },
+    { table_name: 'work_item', privs: 'INSERT,SELECT,UPDATE' },
+    { table_name: 'work_item_audit', privs: 'SELECT' },
+  ]);
+  // The audit trigger refuses UPDATE/DELETE on the audit table even for the
+  // table owner, so no grant path can rewrite history.
+  const itemId = '66666666-6666-4666-8666-666666666666';
+  await withClient(ownerUrl, async (db) => db.query('INSERT INTO nimbir.work_item_audit (hospital_id, work_item_id, actor_id, action) VALUES ($1, $2, $3, $4)', [hospitalAlpha, itemId, userAlpha, 'created']));
+  await assert.rejects(withClient(ownerUrl, (db) => db.query('UPDATE nimbir.work_item_audit SET action = $1 WHERE work_item_id = $2', ['updated', itemId])), (error) => /append only/.test(error.message));
+  await assert.rejects(withClient(ownerUrl, (db) => db.query('DELETE FROM nimbir.work_item_audit WHERE work_item_id = $1', [itemId])), (error) => /append only/.test(error.message));
 });
 
 test('the http api drives the same transaction path end to end', { skip }, async () => {

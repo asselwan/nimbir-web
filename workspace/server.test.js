@@ -54,27 +54,56 @@ test('repeated failed sign-ins are throttled', async () => {
   assert.deepEqual(codes.slice(5), [429, 429]);
 });
 
-test('flooding with distinct emails does not lock out a legitimate account', async () => {
+test('flooding with distinct emails hits a client-wide budget but another client is unaffected', async () => {
   const app = createApp({
     authenticate: async () => null,
     signIn: async () => null,
     store: {},
   });
-  function signIn(email) {
+  function signIn(email, remoteAddress) {
     return new Promise((resolve) => {
       const incoming = Readable.from([JSON.stringify({ email, password: 'wrong' })]);
       incoming.method = 'POST'; incoming.url = '/api/workspace/sign-in'; incoming.headers = {};
+      if (remoteAddress) incoming.socket = { remoteAddress };
       const outgoing = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
       app.emit('request', incoming, outgoing);
     });
   }
-  for (let index = 0; index < 5200; index += 1) {
-    assert.equal((await signIn(`flood-${index}@example.test`)).status, 401);
-  }
-  // A real account signing in after the flood must still be throttled on its own
-  // failures, not because the flood filled the throttle table.
+  // Key churn (varying the email) used to reset the throttle per key; the
+  // client-wide budget caps the flood itself.
   const codes = [];
-  for (let attempt = 0; attempt < 6; attempt += 1) codes.push((await signIn('real@example.test')).status);
-  assert.deepEqual(codes.slice(0, 5), [401, 401, 401, 401, 401]);
-  assert.equal(codes[5], 429);
+  for (let index = 0; index < 120; index += 1) codes.push((await signIn(`flood-${index}@example.test`, '10.0.0.1')).status);
+  assert.equal(codes.slice(0, 100).every((code) => code === 401), true);
+  assert.equal(codes.slice(100).every((code) => code === 429), true, `expected the client budget to refuse the flood after 100 failures, got ${codes.slice(100).join(',')}`);
+  // A different client address still gets its own full budget: five failures of
+  // a real account, then the per-key refusal — not the flood's shadow.
+  const other = [];
+  for (let attempt = 0; attempt < 6; attempt += 1) other.push((await signIn('real@example.test', '10.0.0.2')).status);
+  assert.deepEqual(other, [401, 401, 401, 401, 401, 429]);
+});
+
+test('concurrent failed sign-ins cannot bypass the throttle while authentication is in flight', async () => {
+  let started = 0;
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = createApp({
+    authenticate: async () => null,
+    // Slow enough that every request below is in flight at once.
+    signIn: async () => { started += 1; await gate; return null; },
+    store: {},
+  });
+  const attempts = Array.from({ length: 10 }, (_, index) => new Promise((resolve) => {
+    const incoming = Readable.from([JSON.stringify({ email: 'race@example.test', password: 'wrong' })]);
+    incoming.method = 'POST'; incoming.url = '/api/workspace/sign-in'; incoming.headers = {}; incoming.socket = { remoteAddress: '10.1.0.9' };
+    const outgoing = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
+    app.emit('request', incoming, outgoing);
+  }));
+  await new Promise((resolve) => setImmediate(resolve));
+  release();
+  const codes = (await Promise.all(attempts)).map((response) => response.status);
+  // The per-account limit must hold even with ten credentials checks in
+  // flight simultaneously: at most five reach signIn, the rest are refused.
+  assert.equal(started, 5, `expected exactly 5 in-flight checks, got ${started}`);
+  assert.equal(codes.filter((code) => code === 401).length, 5);
+  assert.equal(codes.filter((code) => code === 429).length, 5);
 });

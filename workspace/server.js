@@ -11,27 +11,52 @@ const assets = new Map([
 ]);
 
 export function createApp({ store, authenticate, signIn, now = () => Date.now() }) {
-  // Failed sign-in attempts are throttled per account+client. Without this the
-  // sign-in endpoint is an unthrottled password oracle.
+  // Failed sign-in attempts are throttled per account+client and, separately,
+  // per client address. Without this the sign-in endpoint is an unthrottled
+  // password oracle.
   const failures = new Map();
+  const clientFailures = new Map();
   const windowMs = 10 * 60 * 1000;
   const maxFailures = 5;
+  // A client-wide budget that key churn (varying the email) cannot reset: the
+  // per-key table may evict, but a single address cannot buy fresh budget by
+  // inventing account names.
+  const maxClientFailures = 100;
   // The throttle must not become the attack surface: an attacker who varies the
   // email would otherwise grow this map without limit.
   const maxTrackedKeys = 5000;
-  function noteFailure(key) {
-    const at = now();
-    for (const [other, record] of failures) if (at - record.first >= windowMs) failures.delete(other);
-    const record = failures.get(key);
-    if (!record || at - record.first >= windowMs) failures.set(key, { count: 1, first: at });
+  function expire(map, at) {
+    for (const [other, record] of map) if (at - record.first >= windowMs) map.delete(other);
+  }
+  function bump(map, key, at) {
+    const record = map.get(key);
+    if (!record || at - record.first >= windowMs) map.set(key, { count: 1, first: at });
     else record.count += 1;
-    while (failures.size > maxTrackedKeys) {
+    while (map.size > maxTrackedKeys) {
       let oldestKey = null;
       let oldestAt = Infinity;
-      for (const [other, entry] of failures) if (entry.first < oldestAt) { oldestAt = entry.first; oldestKey = other; }
+      for (const [other, entry] of map) if (entry.first < oldestAt) { oldestAt = entry.first; oldestKey = other; }
       if (oldestKey === null) break;
-      failures.delete(oldestKey);
+      map.delete(oldestKey);
     }
+  }
+  // Reserving BEFORE the credential check is what closes the concurrent bypass:
+  // every in-flight attempt is counted the moment it arrives, so ten parallel
+  // wrong passwords cannot all pass a check that only sees recorded failures.
+  function reserveAttempt(key, client) {
+    const at = now();
+    expire(failures, at);
+    expire(clientFailures, at);
+    if ((clientFailures.get(client)?.count || 0) >= maxClientFailures) throw new HttpError(429, 'Too many sign-in attempts');
+    if ((failures.get(key)?.count || 0) >= maxFailures) throw new HttpError(429, 'Too many sign-in attempts');
+    bump(failures, key, at);
+    bump(clientFailures, client, at);
+  }
+  function releaseAttempt(key, client) {
+    const clientRecord = clientFailures.get(client);
+    if (clientRecord && (clientRecord.count -= 1) <= 0) clientFailures.delete(client);
+    const keyRecord = failures.get(key);
+    if (keyRecord && (keyRecord.count -= 1) <= 0) failures.delete(key);
   }
   return createServer(async (request, response) => {
     const send = (status, data) => {
@@ -56,15 +81,12 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
         let credentials;
         try { credentials = JSON.parse(raw); } catch { throw new HttpError(400, 'Invalid JSON'); }
         if (!credentials || typeof credentials.email !== 'string' || typeof credentials.password !== 'string' || credentials.email.length > 320 || credentials.password.length > 1024) throw new HttpError(400, 'Email and password required');
-        const key = `${credentials.email.toLowerCase()}|${request.socket?.remoteAddress || ''}`;
-        const record = failures.get(key);
-        if (record && record.count >= maxFailures && now() - record.first < windowMs) throw new HttpError(429, 'Too many sign-in attempts');
+        const client = request.socket?.remoteAddress || '';
+        const key = `${credentials.email.toLowerCase()}|${client}`;
+        reserveAttempt(key, client);
         const accessToken = await signIn(credentials.email, credentials.password);
-        if (!accessToken) {
-          noteFailure(key);
-          throw new HttpError(401, 'Sign-in failed');
-        }
-        failures.delete(key);
+        if (!accessToken) throw new HttpError(401, 'Sign-in failed');
+        releaseAttempt(key, client);
         return send(200, { access_token: accessToken });
       }
       const token = /^Bearer (\S+)$/.exec(request.headers.authorization || '')?.[1];
