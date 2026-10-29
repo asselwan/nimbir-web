@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "start": "node workspace/server.js",
-    "test:workspace": "node --test workspace/*.test.js"
+    "test:workspace": "node --test workspace/*.test.js",
+    "test:workspace:integration": "node --test workspace/integration.test.js",
+    "test:workspace:browser": "node workspace/browser-smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",

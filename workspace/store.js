@@ -1,5 +1,5 @@
-const kinds = new Set(['denial', 'unpaid_claim', 'remittance_line']);
-const statuses = new Set(['open', 'in_progress', 'blocked', 'done']);
+export const kinds = new Set(['denial', 'unpaid_claim', 'remittance_line']);
+export const statuses = new Set(['open', 'in_progress', 'blocked', 'done']);
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const sourceRef = /^SYN-[A-Za-z0-9_-]{1,80}$/;
 
@@ -23,7 +23,7 @@ function input(body, partial = false) {
   if (Object.keys(body).some((k) => !allowed.includes(k)) || (partial && !Object.keys(body).length)) throw new HttpError(400, 'Unsupported field');
   if (!partial || 'kind' in body) if (!kinds.has(body.kind)) throw new HttpError(400, 'Invalid kind');
   if (!partial || 'source_ref' in body) if (typeof body.source_ref !== 'string' || !sourceRef.test(body.source_ref)) throw new HttpError(400, 'Synthetic source_ref required');
-  if (!partial || 'title' in body) if (typeof body.title !== 'string' || !body.title.startsWith('Synthetic ') || body.title.length > 200) throw new HttpError(400, 'Synthetic title required');
+  if (!partial || 'title' in body) if (typeof body.title !== 'string' || !body.title.startsWith('Synthetic ') || body.title.trim().length < 11 || body.title.length > 200) throw new HttpError(400, 'Synthetic title required');
   if ('owner_id' in body && body.owner_id !== null) validId(body.owner_id, 'owner_id');
   if ('status' in body && !statuses.has(body.status)) throw new HttpError(400, 'Invalid status');
   if (!partial || 'sla_due_at' in body) due(body.sla_due_at);
@@ -49,6 +49,17 @@ export function createStore(pool) {
       await client.query('ROLLBACK');
       if (error.code === '23503') throw new HttpError(400, 'Owner must be a hospital member');
       if (error.code === '23505') throw new HttpError(409, 'Work item already exists');
+      // A check-constraint or policy failure is not ordinary bad input: it means the
+      // database rule and the code disagree. Log it before answering, so drift is
+      // visible in the service log instead of looking like a user error.
+      if (error.code === '23514') {
+        console.error(JSON.stringify({ level: 'error', event: 'workspace_constraint_rejected', code: error.code, message: error.message }));
+        throw new HttpError(400, 'Value rejected by the workspace constraints');
+      }
+      if (error.code === '42501') {
+        console.error(JSON.stringify({ level: 'error', event: 'workspace_policy_refused', code: error.code, message: error.message }));
+        throw new HttpError(403, 'Not permitted');
+      }
       throw error;
     } finally { client.release(); }
   }

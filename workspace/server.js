@@ -10,7 +10,29 @@ const assets = new Map([
   ['/workspace/style.css', ['style.css', 'text/css; charset=utf-8']],
 ]);
 
-export function createApp({ store, authenticate, signIn }) {
+export function createApp({ store, authenticate, signIn, now = () => Date.now() }) {
+  // Failed sign-in attempts are throttled per account+client. Without this the
+  // sign-in endpoint is an unthrottled password oracle.
+  const failures = new Map();
+  const windowMs = 10 * 60 * 1000;
+  const maxFailures = 5;
+  // The throttle must not become the attack surface: an attacker who varies the
+  // email would otherwise grow this map without limit.
+  const maxTrackedKeys = 5000;
+  function noteFailure(key) {
+    const at = now();
+    for (const [other, record] of failures) if (at - record.first >= windowMs) failures.delete(other);
+    const record = failures.get(key);
+    if (!record || at - record.first >= windowMs) failures.set(key, { count: 1, first: at });
+    else record.count += 1;
+    while (failures.size > maxTrackedKeys) {
+      let oldestKey = null;
+      let oldestAt = Infinity;
+      for (const [other, entry] of failures) if (entry.first < oldestAt) { oldestAt = entry.first; oldestKey = other; }
+      if (oldestKey === null) break;
+      failures.delete(oldestKey);
+    }
+  }
   return createServer(async (request, response) => {
     const send = (status, data) => {
       response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -20,7 +42,7 @@ export function createApp({ store, authenticate, signIn }) {
       const path = new URL(request.url, 'http://localhost').pathname;
       if (request.method === 'GET' && assets.has(path)) {
         const [file, type] = assets.get(path);
-        response.writeHead(200, { 'content-type': type, 'content-security-policy': "default-src 'self'; connect-src 'self' https:; script-src 'self'; style-src 'self'; base-uri 'none'" });
+        response.writeHead(200, { 'content-type': type, 'content-security-policy': "default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'" });
         response.end(await readFile(new URL(file, `file://${dir}`)));
         return;
       }
@@ -34,8 +56,15 @@ export function createApp({ store, authenticate, signIn }) {
         let credentials;
         try { credentials = JSON.parse(raw); } catch { throw new HttpError(400, 'Invalid JSON'); }
         if (!credentials || typeof credentials.email !== 'string' || typeof credentials.password !== 'string' || credentials.email.length > 320 || credentials.password.length > 1024) throw new HttpError(400, 'Email and password required');
+        const key = `${credentials.email.toLowerCase()}|${request.socket?.remoteAddress || ''}`;
+        const record = failures.get(key);
+        if (record && record.count >= maxFailures && now() - record.first < windowMs) throw new HttpError(429, 'Too many sign-in attempts');
         const accessToken = await signIn(credentials.email, credentials.password);
-        if (!accessToken) throw new HttpError(401, 'Sign-in failed');
+        if (!accessToken) {
+          noteFailure(key);
+          throw new HttpError(401, 'Sign-in failed');
+        }
+        failures.delete(key);
         return send(200, { access_token: accessToken });
       }
       const token = /^Bearer (\S+)$/.exec(request.headers.authorization || '')?.[1];

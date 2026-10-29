@@ -33,3 +33,48 @@ test('API requires verified bearer identity and passes it to tenant-scoped store
   assert.deepEqual(response.body, []);
   assert.deepEqual(calls, [[hospital, user]]);
 });
+
+test('repeated failed sign-ins are throttled', async () => {
+  const app = createApp({
+    authenticate: async () => null,
+    signIn: async () => null,
+    store: {},
+  });
+  function signIn() {
+    return new Promise((resolve) => {
+      const incoming = Readable.from([JSON.stringify({ email: 'user@example.test', password: 'wrong' })]);
+      incoming.method = 'POST'; incoming.url = '/api/workspace/sign-in'; incoming.headers = {};
+      const outgoing = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
+      app.emit('request', incoming, outgoing);
+    });
+  }
+  const codes = [];
+  for (let attempt = 0; attempt < 7; attempt += 1) codes.push((await signIn()).status);
+  assert.deepEqual(codes.slice(0, 5), [401, 401, 401, 401, 401]);
+  assert.deepEqual(codes.slice(5), [429, 429]);
+});
+
+test('flooding with distinct emails does not lock out a legitimate account', async () => {
+  const app = createApp({
+    authenticate: async () => null,
+    signIn: async () => null,
+    store: {},
+  });
+  function signIn(email) {
+    return new Promise((resolve) => {
+      const incoming = Readable.from([JSON.stringify({ email, password: 'wrong' })]);
+      incoming.method = 'POST'; incoming.url = '/api/workspace/sign-in'; incoming.headers = {};
+      const outgoing = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
+      app.emit('request', incoming, outgoing);
+    });
+  }
+  for (let index = 0; index < 5200; index += 1) {
+    assert.equal((await signIn(`flood-${index}@example.test`)).status, 401);
+  }
+  // A real account signing in after the flood must still be throttled on its own
+  // failures, not because the flood filled the throttle table.
+  const codes = [];
+  for (let attempt = 0; attempt < 6; attempt += 1) codes.push((await signIn('real@example.test')).status);
+  assert.deepEqual(codes.slice(0, 5), [401, 401, 401, 401, 401]);
+  assert.equal(codes[5], 429);
+});
