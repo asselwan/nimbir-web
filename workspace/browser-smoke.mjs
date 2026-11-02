@@ -96,9 +96,17 @@ async function main() {
     await page.waitForFunction(() => document.querySelectorAll('#items tr').length === 1, null, { timeout: 15000 });
     pass('created one synthetic item and the queue rendered one row');
 
-    await page.selectOption('#items tr select', 'in_progress');
+    // selectOption sets the DOM value synchronously, so waiting on the select's
+    // value alone races ahead of the PATCH; the server commits the status change
+    // and its audit row before it answers, so awaiting the PATCH response orders
+    // the history check after both.
+    const [updateResponse] = await Promise.all([
+      page.waitForResponse((response) => response.url().includes('/items/') && response.request().method() === 'PATCH'),
+      page.selectOption('#items tr select', 'in_progress'),
+    ]);
     await page.waitForFunction(() => document.querySelector('#items tr select')?.value === 'in_progress', null, { timeout: 15000 });
-    pass('status change persisted through the API');
+    if (!updateResponse.ok()) fail(`status update answered ${updateResponse.status()}`);
+    else pass('status change persisted through the API');
 
     await page.click('#items tr button');
     await page.waitForSelector('dialog[open] pre', { timeout: 15000 });
