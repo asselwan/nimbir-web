@@ -10,6 +10,11 @@ const BANNED = [
   { label: 'Nimbir Recall', pattern: /nimbir[^a-z0-9]*recall/i },
   { label: 'Recall by Nimbir', pattern: /recall[^a-z0-9]*by[^a-z0-9]*nimbir/i },
   { label: 'NOMOI Recall', pattern: /nomoi[^a-z0-9]*recall/i },
+  // Extract and Relay are SSMC-internal: they must never be named on a public
+  // surface (nimbir.com). Only the public Nimbir modules may be named here.
+  { label: 'NOMOI Relay', pattern: /\bnomoi[\s._-]{1,3}relay\b/i },
+  { label: 'NOMOI Extract', pattern: /\bnomoi[\s._-]{1,3}extract\b/i },
+  { label: 'Internal surface URL', pattern: /\b(?:relay|extract)\.nomoi\.ai\b/i },
 ];
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'scripts']);
 // Internal engine data files — "recall" in them is the internal name, not public copy.
