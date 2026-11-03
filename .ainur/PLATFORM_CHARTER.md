@@ -39,7 +39,7 @@ The Docker static image excludes `workspace/`, `migrations/`, package files and 
 | N7 | Destructive test setup cannot target a production or remote database. | `node --test workspace/synthetic-target.test.js` | gate block; wired test needed |
 | N8 | A dropped 835 is parsed in browser memory and does not upload itself. | `prose`: `x12/dropzone.js` uses `FileReader` and contains no network call; add a browser network assertion before treating this as gated. | gate block; pending |
 | N9 | An appeal draft quotes only present reference text and labels missing evidence for human review. | `node --test appeals/no-invented-fact.test.js appeals/compose.test.js` | gate block; wired test needed |
-| N10 | The god's-eye trajectory reconciles exactly to its source rows and explains every movement between stages. | `prose`: Part B must supply the executable reconcile script and its command; this row becomes executable in commit 2. | gate block; pending Part B |
+| N10 | The god's-eye trajectory reconciles exactly to its source rows and explains every movement between stages. | `node scripts/gods-eye-reconcile.mjs` (checked-in 60-row trajectory slice; amounts in source net units) | gate block; executable |
 
 ## Scope wall: what Nimbir is NOT
 
