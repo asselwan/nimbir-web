@@ -34,6 +34,31 @@ test('API requires verified bearer identity and passes it to tenant-scoped store
   assert.deepEqual(calls, [[hospital, user]]);
 });
 
+test('workspace serves only the fixed synthetic 835 and its browser import modules', async () => {
+  const app = createApp({ authenticate: async () => null, signIn: async () => null, store: {} });
+  function request(path) {
+    return new Promise((resolve) => {
+      const incoming = Readable.from([]);
+      incoming.method = 'GET'; incoming.url = path; incoming.headers = {};
+      const outgoing = {
+        writeHead(status, headers) { this.status = status; this.headers = headers; },
+        end(body) { resolve({ status: this.status, headers: this.headers, body: String(body) }); },
+      };
+      app.emit('request', incoming, outgoing);
+    });
+  }
+  const sample = await request('/workspace/sample.835');
+  assert.equal(sample.status, 200);
+  assert.match(sample.headers['content-type'], /^text\/plain/);
+  assert.match(sample.body, /SYNTHETICNIMBIR/);
+  assert.match(sample.body, /CAS\*CO\*97\*450\.00/);
+  for (const path of ['/workspace/x12/parse835.js', '/workspace/x12/carc-rarc.js', '/workspace/x12/to-nimbir.js', '/workspace/x12/to-work-item.js']) {
+    const response = await request(path);
+    assert.equal(response.status, 200, path);
+    assert.match(response.headers['content-type'], /^text\/javascript/);
+  }
+});
+
 test('repeated failed sign-ins are throttled', async () => {
   const app = createApp({
     authenticate: async () => null,

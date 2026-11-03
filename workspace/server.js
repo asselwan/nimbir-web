@@ -8,6 +8,11 @@ const assets = new Map([
   ['/workspace', ['index.html', 'text/html; charset=utf-8']],
   ['/workspace/app.js', ['app.js', 'text/javascript; charset=utf-8']],
   ['/workspace/style.css', ['style.css', 'text/css; charset=utf-8']],
+  ['/workspace/sample.835', ['../x12/fixtures/synthetic-cardio-bundling-co97.835', 'text/plain; charset=utf-8']],
+  ['/workspace/x12/parse835.js', ['../x12/parse835.js', 'text/javascript; charset=utf-8']],
+  ['/workspace/x12/carc-rarc.js', ['../x12/carc-rarc.js', 'text/javascript; charset=utf-8']],
+  ['/workspace/x12/to-nimbir.js', ['../x12/to-nimbir.js', 'text/javascript; charset=utf-8']],
+  ['/workspace/x12/to-work-item.js', ['../x12/to-work-item.js', 'text/javascript; charset=utf-8']],
 ]);
 
 export function createApp({ store, authenticate, signIn, now = () => Date.now() }) {
