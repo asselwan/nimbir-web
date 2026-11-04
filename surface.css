@@ -104,3 +104,24 @@ tbody tr[data-state] td:first-child{box-shadow:inset 3px 0 0 transparent}tbody t
 @media(max-width:1100px){.ge-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.ge-payers{grid-template-columns:1fr}.ge-grid{grid-template-columns:1fr}}
 @media(max-width:650px){#gods-eye{padding:24px 15px 30px;margin-bottom:18px;border-radius:0}.ge-head{grid-template-columns:1fr;gap:20px}.ge-head h1{font-size:clamp(38px,11vw,54px)}.ge-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ge-metric{padding:12px 9px}.ge-metric strong{font-size:22px}.ge-moved{grid-template-columns:1fr;gap:5px}.ge-risk-list button{flex-wrap:wrap}.ge-bar-row{grid-template-columns:minmax(55px,90px) minmax(20px,1fr) auto;gap:6px;font-size:10px}.ge-card{padding:0 12px 15px}}
 @media(prefers-reduced-motion:reduce){.ge-arrow{transform:none}.ge-entered .ge-arrow{animation:none}}
+/* Report deliverable (D-00spolia-universe-nimbir-report, prm_db3fa653 v2): summary tiles, payer/category bars, actions. */
+.rep-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.rep-head time{font:600 10px/1.5 "DM Mono",ui-monospace,monospace;color:var(--muted);letter-spacing:.04em}
+.rep-title{font-size:17px;margin:14px 0 0;letter-spacing:-.02em}
+.rep-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.rep-tiles>div{border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rep-tiles small{font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--teal)}
+.rep-tiles b{font-size:22px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.rep-tiles span{font-size:10px;color:var(--muted);line-height:1.35}
+.rep-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.rep-block h4{font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+.rep-def{font-size:10px;color:var(--muted);margin:0 0 10px}
+.rep-bar-row{margin:0 0 9px}
+.rep-bar{display:block;height:22px;min-width:4%;max-width:100%;background:linear-gradient(90deg,var(--teal),#3d9a8f);border-radius:4px;padding:3px 9px;color:#fff}
+.rep-bar b{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.rep-bar-row small{display:block;font:500 10px/1.6 "DM Mono",ui-monospace,monospace;color:var(--muted);margin-top:2px}
+.rep-actions{margin:0;padding-left:18px}
+.rep-actions li{font-size:12px;margin:0 0 8px}
+.rep-actions small{display:block;color:var(--muted);font:500 10px/1.6 "DM Mono",ui-monospace,monospace}
+.rep-answer{border-top:1px solid var(--line);margin-top:16px;padding-top:10px}
+@media(max-width:900px){.rep-grid{grid-template-columns:1fr}.rep-tiles{grid-template-columns:repeat(2,1fr)}}

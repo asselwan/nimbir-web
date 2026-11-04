@@ -549,6 +549,81 @@ document.getElementById('clear-filters').addEventListener('click', () => { searc
 document.getElementById('retry-load').addEventListener('click', load);
 document.getElementById('review-next').addEventListener('click', () => choose(visibleQueue[0] || claims.find(c => c.state === 'Needs approval') || claims[0]));
 document.getElementById('draft').addEventListener('click', () => { document.getElementById('draft-text').hidden = false; });
+function reportAmounts(list) {
+  const byCurrency = new Map();
+  for (const c of list) {
+    if (typeof c.amount !== 'number' || !Number.isFinite(c.amount)) continue;
+    const key = c.currency || '';
+    byCurrency.set(key, (byCurrency.get(key) || 0) + c.amount);
+  }
+  return [...byCurrency.entries()].map(([cur, sum]) =>
+    `${Math.round(sum).toLocaleString('en-US')}${cur ? ` ${cur}` : ''}`).join(' + ') || 'not supplied in this slice';
+}
+function reportGroups(list, key) {
+  const groups = new Map();
+  for (const c of list) {
+    const k = c[key] || 'Unclassified';
+    if (!groups.has(k)) groups.set(k, {count: 0, rows: []});
+    const g = groups.get(k); g.count++; g.rows.push(c);
+  }
+  return [...groups.entries()].map(([name, g]) => ({name, ...g})).sort((a, b) => b.count - a.count);
+}
+function renderReportBars(el, groups, listLabel) {
+  const max = Math.max(1, ...groups.map(g => g.count));
+  el.replaceChildren(...groups.slice(0, 5).map(g => {
+    const row = document.createElement('div');
+    row.className = 'rep-bar-row';
+    const bar = document.createElement('span');
+    bar.className = 'rep-bar';
+    bar.style.setProperty('--w', `${Math.max(4, Math.round(g.count / max * 100))}%`);
+    const label = document.createElement('b');
+    label.textContent = g.name;
+    const value = document.createElement('small');
+    value.textContent = `${g.count} ${listLabel.replace(/s$/, g.count === 1 ? '' : 's')} · ${reportAmounts(g.rows)}`;
+    bar.prepend(label); row.append(bar, value);
+    return row;
+  }));
+  if (!groups.length) el.replaceChildren(Object.assign(document.createElement('p'), {className: 'rep-def', textContent: 'None in this view.'}));
+}
+function buildReport(q, subset) {
+  const questionText = document.getElementById('question').options[q].textContent;
+  setText('report-question-title', questionText);
+  setText('report-stamp', `Generated locally ${new Date().toISOString().slice(0, 10)} · point-in-time sample`);
+  const payers = reportGroups(subset, 'payer');
+  const categories = reportGroups(subset, 'denial_category');
+  const topPayer = payers[0];
+  const tiles = [
+    {label: 'ENCOUNTERS IN VIEW', value: String(subset.length), note: `of ${claims.length} in the local slice`},
+    {label: 'RECORDED CLAIM NET UNITS', value: reportAmounts(subset), note: 'recorded claim amounts, not payment or revenue'},
+    {label: 'TOP PAYER SHARE', value: topPayer ? `${Math.round(topPayer.count / Math.max(1, subset.length) * 100)}%` : '—', note: topPayer ? topPayer.name : 'none in view'},
+    {label: 'DENIAL CATEGORIES', value: String(categories.length), note: 'payer-rule categories recorded on these lines'}
+  ];
+  document.getElementById('rep-tiles').replaceChildren(...tiles.map(t => {
+    const tile = document.createElement('div');
+    const small = document.createElement('small'); small.textContent = t.label;
+    const b = document.createElement('b'); b.textContent = t.value;
+    const span = document.createElement('span'); span.textContent = t.note;
+    tile.append(small, b, span);
+    return tile;
+  }));
+  renderReportBars(document.getElementById('rep-payers'), payers, 'encounters');
+  renderReportBars(document.getElementById('rep-categories'), categories, 'encounters');
+  const actions = new Map();
+  for (const c of subset) {
+    const k = c.next_action || 'No next action recorded.';
+    if (!actions.has(k)) actions.set(k, []); actions.get(k).push(c);
+  }
+  document.getElementById('rep-actions').replaceChildren(...[...actions.entries()].sort((a, b) => b[1].length - a[1].length).slice(0, 4).map(([action, rows]) => {
+    const li = document.createElement('li');
+    const b = document.createElement('b'); b.textContent = `${rows.length} encounter${rows.length === 1 ? '' : 's'} · ${action}`;
+    const ids = document.createElement('small'); ids.textContent = rows.slice(0, 3).map(c => c.claim_id).join(', ') + (rows.length > 3 ? ` +${rows.length - 3} more` : '');
+    li.append(b, ids);
+    return li;
+  }));
+  setText('report-answer', q === 2
+    ? `This local dataset contains ${claims.length} encounters. It is a point-in-time sample; no historical comparison is available.`
+    : `${subset.length} encounter${subset.length === 1 ? '' : 's'} in this view. Every figure above is computed in this browser from the local slice; next actions are illustrative reviewer prompts, not assigned live work.`);
+}
 document.getElementById('run-report').addEventListener('click', () => {
   const button = document.getElementById('run-report');
   const status = document.getElementById('report-status');
@@ -558,9 +633,7 @@ document.getElementById('run-report').addEventListener('click', () => {
   document.getElementById('report-output').hidden = true;
   window.setTimeout(() => {
     const subset = q === 0 ? claims.filter(c => c.state === 'Blocked') : q === 1 ? claims.filter(c => c.state === 'Needs approval') : claims;
-    setText('report-answer', q === 2
-      ? `This local dataset contains ${claims.length} encounters. It is a point-in-time sample; no historical comparison is available.`
-      : `${subset.length} encounter${subset.length === 1 ? '' : 's'}: ${subset.map(c => `${c.claim_id} (${c.owner}; ${c.next_action})`).join('; ') || 'none'}.`);
+    buildReport(q, subset);
     document.getElementById('report-output').hidden = false;
     status.textContent = 'Preview report ready.';
     button.disabled = false; button.textContent = 'Create preview report';
