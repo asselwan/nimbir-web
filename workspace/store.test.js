@@ -8,7 +8,7 @@ const user = '33333333-3333-4333-8333-333333333333';
 const item = '44444444-4444-4444-8444-444444444444';
 const draft = { kind: 'denial', source_ref: 'SYN-CLAIM-1', title: 'Synthetic denial', sla_due_at: '2026-11-01T12:00:00Z' };
 
-function fakePool({ authorized = true, failWrite = false } = {}) {
+function fakePool({ authorized = true, failWrite = false, summary = null } = {}) {
   const calls = [];
   const client = {
     async query(sql, args = []) {
@@ -18,6 +18,7 @@ function fakePool({ authorized = true, failWrite = false } = {}) {
         if (failWrite) throw new Error('write failure');
         return { rowCount: 1, rows: [{ id: item, hospital_id: args[0] }] };
       }
+      if (summary && sql.includes('count(*)::int AS total')) return { rowCount: 1, rows: [summary] };
       return { rowCount: 0, rows: [] };
     },
     release() { calls.push({ sql: 'RELEASE' }); },
@@ -81,4 +82,33 @@ test('rejects patient-shaped and arbitrary fields, bad statuses, and non-synthet
     { ...draft, status: 'paid' },
     { ...draft, sla_due_at: 'tomorrow' },
   ]) await assert.rejects(store.create(hospital, user, body), (error) => error.status === 400);
+});
+
+test('queue filters are bound as parameters and unknown filter values are refused', async () => {
+  const pool = fakePool();
+  const store = createStore(pool);
+  await store.queue(hospital, user, { status: 'blocked', needs_owner: true });
+  const query = pool.calls.find((call) => call.sql.includes('FROM nimbir.work_item'));
+  assert.match(query.sql, /WHERE hospital_id = \$1 AND status = \$2 AND owner_id IS NULL/);
+  assert.deepEqual(query.args, [hospital, 'blocked']);
+  await store.queue(hospital, user, { kind: 'denial' });
+  const byKind = pool.calls.find((call) => call.sql.includes('kind = $2'));
+  assert.deepEqual(byKind.args, [hospital, 'denial']);
+  await store.queue(hospital, user, { overdue: true });
+  const overdue = pool.calls.find((call) => call.sql.includes('sla_due_at < now()'));
+  assert.match(overdue.sql, /status <> 'done'/);
+  await assert.rejects(store.queue(hospital, user, { status: 'paid' }), (error) => error.status === 400);
+  await assert.rejects(store.queue(hospital, user, { kind: 'invoice' }), (error) => error.status === 400);
+});
+
+test('triage summarises the whole hospital queue', async () => {
+  const pool = fakePool({ summary: { total: '5', open: '3', in_progress: '1', blocked: '1', done: '0', unowned: '2', overdue: '1', denial: '2', unpaid_claim: '2', remittance_line: '1', next_due_at: '2026-11-06T09:00:00.000Z' } });
+  const summary = await createStore(pool).triage(hospital, user);
+  assert.equal(summary.total, 5);
+  assert.equal(summary.open, 3);
+  assert.equal(summary.overdue, 1);
+  assert.equal(summary.unowned, 2);
+  assert.equal(summary.next_due_at, '2026-11-06T09:00:00.000Z');
+  const query = pool.calls.find((call) => call.sql.includes('count(*)::int AS total'));
+  assert.deepEqual(query.args, [hospital]);
 });

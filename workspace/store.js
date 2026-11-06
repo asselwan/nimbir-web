@@ -30,6 +30,29 @@ function input(body, partial = false) {
   return body;
 }
 
+// The triage filter set is deliberately small and closed: the same vocabulary
+// the queue is built from, so a filter can never widen into a free-text query.
+// Values are bound as parameters, never interpolated into SQL.
+export const triageFilters = ['status', 'kind', 'needs_owner', 'overdue'];
+
+function queueFilter(filters = {}) {
+  const clauses = [];
+  const args = [];
+  // $1 is always the hospital id, so the first filter parameter is $2.
+  const push = (value) => { args.push(value); return `$${args.length + 1}`; };
+  if (filters.status !== undefined && filters.status !== null && filters.status !== '') {
+    if (!statuses.has(filters.status)) throw new HttpError(400, 'Invalid status filter');
+    clauses.push(`status = ${push(filters.status)}`);
+  }
+  if (filters.kind !== undefined && filters.kind !== null && filters.kind !== '') {
+    if (!kinds.has(filters.kind)) throw new HttpError(400, 'Invalid kind filter');
+    clauses.push(`kind = ${push(filters.kind)}`);
+  }
+  if (filters.needs_owner) clauses.push('owner_id IS NULL');
+  if (filters.overdue) { clauses.push("status <> 'done'"); clauses.push('sla_due_at < now()'); }
+  return { clauses, args };
+}
+
 export function createStore(pool) {
   async function member(hospitalId, userId, db = pool) {
     validId(hospitalId, 'hospital_id'); validId(userId, 'user_id');
@@ -79,10 +102,40 @@ export function createStore(pool) {
     async hospitals(userId) {
       return readAs(userId, async (db) => (await db.query('SELECT h.id, h.name, m.role FROM nimbir.hospital h JOIN nimbir.hospital_member m ON m.hospital_id = h.id WHERE m.user_id = $1 ORDER BY h.name', [userId])).rows);
     },
-    async queue(hospitalId, userId) {
+    async queue(hospitalId, userId, filters = {}) {
+      const { clauses, args } = queueFilter(filters);
+      const where = clauses.length ? ` AND ${clauses.join(' AND ')}` : '';
       return readAs(userId, async (db) => {
         await member(hospitalId, userId, db);
-        return (await db.query('SELECT id, kind, source_ref, title, owner_id, status, sla_due_at, created_at, updated_at FROM nimbir.work_item WHERE hospital_id = $1 ORDER BY (status = \'done\'), sla_due_at, id LIMIT 500', [hospitalId])).rows;
+        return (await db.query(`SELECT id, kind, source_ref, title, owner_id, status, sla_due_at, created_at, updated_at FROM nimbir.work_item WHERE hospital_id = $1${where} ORDER BY (status = 'done'), sla_due_at, id LIMIT 500`, [hospitalId, ...args])).rows;
+      });
+    },
+    // The triage summary counts the whole hospital queue, not a filtered slice:
+    // it answers "how much of this is waiting, and what is late" so the queue
+    // can be worked rather than merely read.
+    async triage(hospitalId, userId) {
+      return readAs(userId, async (db) => {
+        await member(hospitalId, userId, db);
+        const rows = (await db.query(`SELECT
+          count(*)::int AS total,
+          (count(*) FILTER (WHERE status = 'open'))::int AS open,
+          (count(*) FILTER (WHERE status = 'in_progress'))::int AS in_progress,
+          (count(*) FILTER (WHERE status = 'blocked'))::int AS blocked,
+          (count(*) FILTER (WHERE status = 'done'))::int AS done,
+          (count(*) FILTER (WHERE owner_id IS NULL))::int AS unowned,
+          (count(*) FILTER (WHERE status <> 'done' AND sla_due_at < now()))::int AS overdue,
+          (count(*) FILTER (WHERE kind = 'denial'))::int AS denial,
+          (count(*) FILTER (WHERE kind = 'unpaid_claim'))::int AS unpaid_claim,
+          (count(*) FILTER (WHERE kind = 'remittance_line'))::int AS remittance_line,
+          min(sla_due_at) FILTER (WHERE status <> 'done') AS next_due_at
+          FROM nimbir.work_item WHERE hospital_id = $1`, [hospitalId])).rows;
+        const summary = { total: 0, open: 0, in_progress: 0, blocked: 0, done: 0, unowned: 0, overdue: 0, denial: 0, unpaid_claim: 0, remittance_line: 0, next_due_at: null };
+        const row = rows[0] || {};
+        for (const key of Object.keys(summary)) {
+          if (row[key] === undefined || row[key] === null) continue;
+          summary[key] = key === 'next_due_at' ? new Date(row[key]).toISOString() : Number(row[key]);
+        }
+        return summary;
       });
     },
     async audit(hospitalId, userId, itemId) {
