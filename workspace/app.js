@@ -83,6 +83,36 @@ document.querySelector('#connect').addEventListener('submit', async (event) => {
     workspace.hidden = false; await load();
   } catch (error) { message.textContent = error.message; workspace.hidden = false; }
 });
+document.querySelector('#import-sample').addEventListener('click', async () => {
+  const button = document.querySelector('#import-sample');
+  button.disabled = true;
+  try {
+    message.textContent = 'Parsing the bundled synthetic 835…';
+    const response = await fetch('/workspace/sample.835', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Synthetic remittance could not be loaded');
+    const result = window.NimbirFromX12.fromX12Text(await response.text(), { fileName: 'synthetic-cardio-bundling-co97.835' });
+    const drafts = window.NimbirToWorkItem.toWorkItems(result.claim_lines, { sourceId: 'CARDIO-CO97' });
+    let created = 0;
+    let existing = 0;
+    for (const draft of drafts) {
+      const response = await fetch(`/api/workspace/${hospital.value}/items`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify(draft),
+      });
+      const value = await response.json();
+      if (response.status === 409) { existing += 1; continue; }
+      if (!response.ok) throw new Error(value.error || 'Import failed');
+      created += 1;
+    }
+    await load();
+    message.textContent = `${created} created; ${existing} already in the queue. ${drafts.length} synthetic denial lines await staff review; nothing was sent to a payer.`;
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
 hospital.addEventListener('change', () => load().catch((error) => { message.textContent = error.message; }));
 document.querySelector('#refresh').addEventListener('click', () => load().catch((error) => { message.textContent = error.message; }));
 for (const control of ['#filter-status', '#filter-kind', '#filter-needs-owner', '#filter-overdue']) {

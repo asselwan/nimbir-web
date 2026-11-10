@@ -83,18 +83,11 @@ async function main() {
     if (hospitalName !== 'Synthetic Hospital Alpha') fail(`hospital option was ${hospitalName}`);
     else pass(`signed in and loaded membership: ${hospitalName}`);
 
-    await page.waitForSelector('#items tr', { timeout: 15000 }).catch(() => {});
-    // Create one synthetic item through the API the page uses.
-    await page.evaluate(async ([hospital]) => {
-      await fetch(`/api/workspace/${hospital}/items`, {
-        method: 'POST',
-        headers: { authorization: 'Bearer synthetic-harness-token', 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: 'denial', source_ref: 'SYN-BROWSER-1', title: 'Synthetic browser item', sla_due_at: '2026-12-01T09:00:00Z' }),
-      });
-    }, [hospitalId]);
-    await page.click('#refresh');
-    await page.waitForFunction(() => document.querySelectorAll('#items tr').length === 1, null, { timeout: 15000 });
-    pass('created one synthetic item and the queue rendered one row');
+    // Import the fixed synthetic 835 through the same button staff use. The
+    // fixture has four CO-97 service lines, all awaiting a human decision.
+    await page.click('#import-sample');
+    await page.waitForFunction(() => document.querySelectorAll('#items tr').length === 4, null, { timeout: 15000 });
+    pass('imported the synthetic 835 and rendered four staff work items');
 
     // selectOption sets the DOM value synchronously, so waiting on the select's
     // value alone races ahead of the PATCH; the server commits the status change
