@@ -107,3 +107,33 @@ test('concurrent failed sign-ins cannot bypass the throttle while authentication
   assert.equal(codes.filter((code) => code === 401).length, 5);
   assert.equal(codes.filter((code) => code === 429).length, 5);
 });
+
+test('triage filters reach the store and the triage summary is served separately', async () => {
+  const calls = [];
+  const app = createApp({
+    authenticate: async () => user,
+    signIn: async () => null,
+    store: {
+      hospitals: async () => [],
+      queue: async (tenant, who, filters) => { calls.push({ call: 'queue', tenant, who, filters }); return []; },
+      triage: async (tenant, who) => { calls.push({ call: 'triage', tenant, who }); return { total: 3, open: 3, overdue: 0 }; },
+    },
+  });
+  function request(path) {
+    return new Promise((resolve) => {
+      const incoming = Readable.from([]);
+      incoming.method = 'GET'; incoming.url = path; incoming.headers = { authorization: 'Bearer verified' };
+      const outgoing = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
+      app.emit('request', incoming, outgoing);
+    });
+  }
+  const filtered = await request(`/api/workspace/${hospital}/items?status=open&kind=denial&needs_owner=1&overdue=1`);
+  assert.equal(filtered.status, 200);
+  assert.deepEqual(calls[0], { call: 'queue', tenant: hospital, who: user, filters: { status: 'open', kind: 'denial', needs_owner: true, overdue: true } });
+  const summary = await request(`/api/workspace/${hospital}/triage`);
+  assert.equal(summary.status, 200);
+  assert.deepEqual(summary.body, { total: 3, open: 3, overdue: 0 });
+  // An unfiltered queue read carries no filter object at all.
+  await request(`/api/workspace/${hospital}/items`);
+  assert.deepEqual(calls[2].filters, {});
+});

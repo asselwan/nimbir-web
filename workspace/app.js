@@ -9,8 +9,27 @@ async function api(path) {
   if (!response.ok) throw new Error(value.error || 'Request failed');
   return value;
 }
+function filterQuery() {
+  const params = new URLSearchParams();
+  const status = document.querySelector('#filter-status').value;
+  if (status) params.set('status', status);
+  const kind = document.querySelector('#filter-kind').value;
+  if (kind) params.set('kind', kind);
+  if (document.querySelector('#filter-needs-owner').checked) params.set('needs_owner', '1');
+  if (document.querySelector('#filter-overdue').checked) params.set('overdue', '1');
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+function renderTriage(summary) {
+  const parts = [`${summary.total} in queue`, `${summary.open} open`, `${summary.in_progress} in progress`, `${summary.blocked} blocked`, `${summary.done} done`];
+  if (summary.overdue) parts.push(`${summary.overdue} overdue`);
+  if (summary.unowned) parts.push(`${summary.unowned} without an owner`);
+  if (summary.next_due_at) parts.push(`next due ${new Date(summary.next_due_at).toLocaleString()}`);
+  document.querySelector('#triage').textContent = parts.join(' · ');
+}
 async function load() {
-  const rows = await api(`${hospital.value}/items`);
+  const [rows, summary] = await Promise.all([api(`${hospital.value}/items${filterQuery()}`), api(`${hospital.value}/triage`)]);
+  renderTriage(summary);
   items.replaceChildren();
   for (const row of rows) {
     const tr = document.createElement('tr');
@@ -48,7 +67,7 @@ async function load() {
     });
     td.append(button); tr.append(td); items.append(tr);
   }
-  message.textContent = `${rows.length} work items`;
+  message.textContent = filterQuery() ? `${rows.length} of ${summary.total} work items` : `${rows.length} work items`;
 }
 document.querySelector('#connect').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -66,3 +85,7 @@ document.querySelector('#connect').addEventListener('submit', async (event) => {
 });
 hospital.addEventListener('change', () => load().catch((error) => { message.textContent = error.message; }));
 document.querySelector('#refresh').addEventListener('click', () => load().catch((error) => { message.textContent = error.message; }));
+for (const control of ['#filter-status', '#filter-kind', '#filter-needs-owner', '#filter-overdue']) {
+  const element = document.querySelector(control);
+  element.addEventListener('change', () => load().catch((error) => { message.textContent = error.message; }));
+}

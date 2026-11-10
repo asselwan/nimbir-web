@@ -58,13 +58,26 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
     const keyRecord = failures.get(key);
     if (keyRecord && (keyRecord.count -= 1) <= 0) failures.delete(key);
   }
+  // The query string carries the triage filter set. Only the closed vocabulary
+  // in store.js is accepted, and every value is bound as a query parameter.
+  function readFilters(params) {
+    const filters = {};
+    const status = params.get('status');
+    if (status) filters.status = status;
+    const kind = params.get('kind');
+    if (kind) filters.kind = kind;
+    if (params.get('needs_owner') === '1') filters.needs_owner = true;
+    if (params.get('overdue') === '1') filters.overdue = true;
+    return filters;
+  }
   return createServer(async (request, response) => {
     const send = (status, data) => {
       response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       response.end(JSON.stringify(data));
     };
     try {
-      const path = new URL(request.url, 'http://localhost').pathname;
+      const url = new URL(request.url, 'http://localhost');
+      const path = url.pathname;
       if (request.method === 'GET' && assets.has(path)) {
         const [file, type] = assets.get(path);
         response.writeHead(200, { 'content-type': type, 'content-security-policy': "default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; base-uri 'none'" });
@@ -96,8 +109,9 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
       const parts = path.slice('/api/workspace/'.length).split('/');
       if (request.method === 'GET' && parts[0] === 'hospitals' && parts.length === 1) return send(200, await store.hospitals(userId));
       const hospitalId = parts[0];
+      if (request.method === 'GET' && parts.length === 2 && parts[1] === 'triage') return send(200, await store.triage(hospitalId, userId));
       if (parts[1] !== 'items') throw new HttpError(404, 'Not found');
-      if (request.method === 'GET' && parts.length === 2) return send(200, await store.queue(hospitalId, userId));
+      if (request.method === 'GET' && parts.length === 2) return send(200, await store.queue(hospitalId, userId, readFilters(url.searchParams)));
       if (request.method === 'GET' && parts.length === 4 && parts[3] === 'audit') return send(200, await store.audit(hospitalId, userId, parts[2]));
       let body;
       if (request.method === 'POST' || request.method === 'PATCH') {
