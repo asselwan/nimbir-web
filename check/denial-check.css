@@ -321,3 +321,11 @@
     margin-inline: 16px;
   }
 }
+
+#denial-check .dc-passed { margin: 8px 0 0; }
+#denial-check .dc-passed > summary { cursor: pointer; font: 600 12px/1.4 "DM Mono", ui-monospace, monospace; color: var(--muted); min-height: 32px; display: flex; align-items: center; }
+@media (max-width: 480px) {
+  #denial-check .dc-actions { flex-direction: column; align-items: stretch; }
+  #denial-check .dc-actions .button { width: 100%; min-height: 44px; text-align: center; }
+  #denial-check .dc-footer { display: block; }
+}

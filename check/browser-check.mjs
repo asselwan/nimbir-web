@@ -61,7 +61,7 @@ async function checkViewport(browser, url, width) {
     await assertWidth(page, width);
     await page.locator(result).screenshot({ path: join(shotDir, 'denial-check-' + width + '-result.png') });
 
-    const summary = cards.first().locator('summary');
+    const summary = cards.first().locator('.dc-draft > summary');
     await summary.focus();
     await summary.press('Space');
     await cards.first().locator('pre mark').first().waitFor();

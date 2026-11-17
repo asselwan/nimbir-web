@@ -95,17 +95,29 @@
     card.append(element('p', 'dc-route', finding.routeLabel));
 
     if (finding.preflight.length) {
-      const checks = element('ul', 'dc-checks');
-      checks.setAttribute('aria-label', 'Preflight checks');
-      for (const check of finding.preflight) {
+      const failed = finding.preflight.filter(check => !check.pass);
+      const passed = finding.preflight.filter(check => check.pass);
+      const checkRow = check => {
         const row = element('li');
         row.append(
           element('b', check.pass ? 'dc-pass' : 'dc-fail', check.pass ? '✓ Pass' : '× Fail'),
           element('span', '', check.detail)
         );
-        checks.append(row);
+        return row;
+      };
+      if (failed.length) {
+        const checks = element('ul', 'dc-checks');
+        checks.setAttribute('aria-label', 'Checks that failed');
+        for (const check of failed) checks.append(checkRow(check));
+        card.append(checks);
       }
-      card.append(checks);
+      if (passed.length) {
+        const passedBox = element('details', 'dc-passed');
+        const passedList = element('ul', 'dc-checks');
+        for (const check of passed) passedList.append(checkRow(check));
+        passedBox.append(element('summary', '', passed.length + (passed.length === 1 ? ' check passed' : ' checks passed')), passedList);
+        card.append(passedBox);
+      }
     }
     if (finding.missing.length) {
       const evidence = element('ul', 'dc-evidence');
@@ -136,10 +148,11 @@
 
   function render(analysis, synthetic) {
     const { deniedTotal, findings, unmatched, byRoute, needsCount, totals } = analysis;
+    const routed = findings.filter(finding => finding.route !== 'human_triage').length;
     const headline = findings.length
-      ? money(deniedTotal) + ' denied across ' + countLabel(totals.deniedLines, 'line') + '. ' +
-        totals.verifiedLines + (totals.verifiedLines === 1 ? ' has' : ' have') + ' a verified next step; ' +
-        needsCount + (needsCount === 1 ? ' needs' : ' need') + ' a person to supply evidence first.'
+      ? money(deniedTotal) + ' denied across ' + countLabel(totals.deniedLines, 'line') + '. Nimbir routed ' +
+        routed + ' of ' + findings.length + ' to a next step. ' +
+        (needsCount ? countLabel(needsCount, 'line') + ' cannot go out until a person adds the evidence listed.' : 'None is waiting on missing evidence.')
       : 'No provider denials in this file.';
     const header = element('header', 'dc-result-head');
     const heading = element('h3', 'dc-result-title', headline);
