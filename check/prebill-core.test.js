@@ -123,3 +123,37 @@ test('the shipped files carry no banned words', () => {
     assert.equal(cleanHits.length, allowed, file + ': "clean" only inside "not the same as clean"');
   }
 });
+
+// Independent-check fixes (Opus verifier, prm_d6f2caa2 v8): the NCCI bypass modifier counts only on the
+// column 2 code, and a code that appears on several lines carries the modifiers of every one of them.
+test('a distinct-service modifier on the column 1 line only does not count as present', () => {
+  const { parseLines, check } = core();
+  const t = table();
+  const onColumnOne = check(parseLines('93224 59\n93000').lines, t);
+  assert.equal(onColumnOne.pairs[0].column1, '93224');
+  assert.equal(onColumnOne.pairs[0].status, 'bundled_no_modifier');
+  assert.equal(onColumnOne.pairs[0].distinctModifierPresent, false);
+  const onColumnTwo = check(parseLines('93224\n93000 59').lines, t);
+  assert.equal(onColumnTwo.pairs[0].status, 'modifier_present_needs_documentation');
+  const reversedInput = check(parseLines('93000 XU\n93224').lines, t);
+  assert.equal(reversedInput.pairs[0].status, 'modifier_present_needs_documentation');
+});
+
+test('the result does not depend on line order when a code repeats with different modifiers', () => {
+  const { parseLines, check } = core();
+  const t = table();
+  const a = check(parseLines('93224\n93000\n93000 59').lines, t);
+  const b = check(parseLines('93224\n93000 59\n93000').lines, t);
+  assert.equal(a.pairs.length, 1);
+  assert.equal(a.pairs[0].status, b.pairs[0].status);
+  assert.equal(a.pairs[0].status, 'modifier_present_needs_documentation');
+});
+
+test('the placeholder example puts its modifier on the column 2 code', () => {
+  const ui = readFileSync(path.join(root, 'check/prebill-check.js'), 'utf8');
+  const placeholder = ui.match(/input\.placeholder = '([^']*)'/)[1].split('\\n');
+  const { parseLines, check } = core();
+  const result = check(parseLines(placeholder.join('\n')).lines, table());
+  assert.equal(result.pairs.length, 1);
+  assert.equal(result.pairs[0].status, 'modifier_present_needs_documentation');
+});

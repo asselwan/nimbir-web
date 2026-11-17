@@ -53,30 +53,30 @@
 
     const { source, version, url } = table;
     const rows = new Map(table.pairs.map(row => [row.column1 + '/' + row.column2, row]));
+    // One entry per code, in first-seen order, carrying the modifiers of every line that bills it,
+    // so a repeated code gives the same result whatever order its lines are in.
+    const codes = new Map();
+    for (const line of lines) {
+      if (!codes.has(line.cpt)) codes.set(line.cpt, new Set());
+      for (const modifier of line.modifiers) codes.get(line.cpt).add(modifier);
+    }
+    const unique = [...codes.keys()];
     const pairs = [];
     const unpaired = [];
-    const seen = new Set();
-    for (let i = 0; i < linesChecked; i++) {
-      const first = lines[i];
-      for (let j = i + 1; j < linesChecked; j++) {
-        const second = lines[j];
-        if (first.cpt === second.cpt) continue;
-
-        const forward = first.cpt + '/' + second.cpt;
-        const reverse = second.cpt + '/' + first.cpt;
-        const key = forward < reverse ? forward : reverse;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        const row = rows.get(forward) ?? rows.get(reverse);
+    for (let i = 0; i < unique.length; i++) {
+      for (let j = i + 1; j < unique.length; j++) {
+        const first = unique[i];
+        const second = unique[j];
+        const row = rows.get(first + '/' + second) ?? rows.get(second + '/' + first);
         if (!row) {
-          unpaired.push({ column1: first.cpt, column2: second.cpt, status: 'not_in_table' });
+          unpaired.push({ column1: first, column2: second, status: 'not_in_table' });
           continue;
         }
 
         const { column1, column2, modifier_indicator: modifierIndicator, rationale, effective_date } = row;
-        const modifiersPresent = [...first.modifiers, ...second.modifiers];
-        const distinctModifierPresent = modifiersPresent.some(modifier => distinctModifiers.has(modifier));
+        const modifiersPresent = [column1, column2].flatMap(code => [...codes.get(code)].map(modifier => modifier + ' on ' + code));
+        // The NCCI bypass modifier belongs on the column 2 (bundled) code; one on the column 1 line only does not count.
+        const distinctModifierPresent = [...codes.get(column2)].some(modifier => distinctModifiers.has(modifier));
         pairs.push({
           column1, column2, modifierIndicator,
           meaning: indicatorMeaning(modifierIndicator),

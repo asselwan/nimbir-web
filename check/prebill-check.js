@@ -10,7 +10,7 @@
   ];
   const actionText = {
     bundled_no_modifier: 'Bill column 1 only, or add a distinct-service modifier to the column 2 line only when the documentation shows a separate site, session or encounter.',
-    modifier_present_needs_documentation: 'A distinct-service modifier is on the line. Before billing, make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
+    modifier_present_needs_documentation: 'A distinct-service modifier is on the column 2 line. Before billing, make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
     never_separately_payable: 'Remove the column 2 line; NCCI allows no modifier for this pair.',
     edit_deleted: 'This edit does not apply in this version of the table.'
   };
@@ -39,7 +39,7 @@
   const input = element('textarea', 'pb-input');
   input.id = 'prebill-lines';
   input.rows = 6;
-  input.placeholder = '93000\n93224 59';
+  input.placeholder = '93224\n93000 59';
   input.spellcheck = false;
   input.setAttribute('aria-label', 'CPT lines and modifiers');
 
@@ -191,12 +191,21 @@
       showResult(element('p', 'pb-error', 'More than 200 lines. Check in batches of 200.'));
       return;
     }
+    if (!lines.length) {
+      showResult(element('p', 'pb-error', rejected.length
+        ? 'No line had a CPT or HCPCS code. Enter one code per line, modifiers after the code.'
+        : 'Paste at least one CPT line, or pick a synthetic example.'));
+      return;
+    }
     try {
-      tableRequest ??= loadTable();
+      tableRequest ??= loadTable().catch(error => {
+        tableRequest = undefined;
+        throw error;
+      });
       const table = await tableRequest;
       if (id === currentRun) render(check(lines, table), rejected, table);
     } catch {
-      if (id === currentRun) showResult(element('p', 'pb-error', 'Could not load the NCCI table. Reload the page to try again.'));
+      if (id === currentRun) showResult(element('p', 'pb-error', 'Could not load the NCCI table. Press Check before billing to try again.'));
     }
   }
 })();
