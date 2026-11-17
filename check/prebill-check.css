@@ -1,0 +1,239 @@
+#prebill-check {
+  margin: 0 32px 26px;
+  padding: clamp(16px, 2.4vw, 32px);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--teal);
+  border-radius: 0 0 12px 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+  overflow-wrap: anywhere;
+  scroll-margin-top: 12px;
+}
+
+#prebill-check .pb-eyebrow,
+#prebill-check .pb-input,
+#prebill-check .pb-code,
+#prebill-check .pb-citation {
+  font-family: "DM Mono", ui-monospace, monospace;
+}
+
+#prebill-check .pb-eyebrow {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .13em;
+}
+
+#prebill-check .pb-title {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 3vw, 38px);
+}
+
+#prebill-check .pb-intro {
+  margin-bottom: 16px;
+  color: var(--muted);
+}
+
+#prebill-check .pb-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  gap: 8px;
+}
+
+#prebill-check .pb-input {
+  justify-self: stretch;
+  min-width: 0;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+#prebill-check .pb-chips,
+#prebill-check .pb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#prebill-check .pb-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+
+#prebill-check .pb-chip:hover {
+  border-color: var(--teal);
+  background: var(--mint);
+}
+
+#prebill-check :is(button, a, summary, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+#prebill-check .pb-result:not(:empty) {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+#prebill-check .pb-result-title {
+  margin: 0 0 14px;
+  max-width: 58ch;
+  font-size: clamp(21px, 2.2vw, 29px);
+  line-height: 1.23;
+  letter-spacing: -.025em;
+}
+
+#prebill-check .pb-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+#prebill-check .pb-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+#prebill-check .pb-card h4 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+#prebill-check .pb-card p {
+  margin: 0 0 7px;
+}
+
+#prebill-check .pb-indicator-details > summary {
+  display: none;
+}
+
+#prebill-check .pb-action {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--teal);
+  background: var(--canvas);
+}
+
+#prebill-check .pb-action h5 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+#prebill-check .pb-action p,
+#prebill-check .pb-card .pb-citation {
+  margin: 0;
+}
+
+#prebill-check .pb-citation {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+#prebill-check .pb-citation a {
+  text-decoration: underline;
+}
+
+#prebill-check .pb-miss {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+#prebill-check :is(.pb-miss, .pb-indicator-details) > summary {
+  min-height: 44px;
+  padding: 12px 2px;
+  color: var(--teal);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+#prebill-check .pb-miss p {
+  margin: 0 0 8px;
+}
+
+#prebill-check .pb-miss ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+#prebill-check .pb-rejected {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+#prebill-check .pb-error {
+  margin: 0;
+  color: var(--rose);
+}
+
+#prebill-check .pb-footer {
+  display: block;
+  margin-top: 14px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+#prebill-check .pb-footer p {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+#prebill-check .button {
+  min-height: 44px;
+}
+
+@media (max-width: 700px) {
+  #prebill-check .pb-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  #prebill-check {
+    margin-inline: 16px;
+  }
+
+  #prebill-check .pb-controls {
+    justify-items: stretch;
+  }
+
+  #prebill-check .pb-chips,
+  #prebill-check .pb-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #prebill-check .pb-actions .button {
+    text-align: center;
+  }
+
+  #prebill-check .pb-indicator-details > summary {
+    display: list-item;
+  }
+}

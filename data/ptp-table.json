@@ -1,0 +1,442 @@
+{
+  "source": "CMS NCCI Procedure-to-Procedure (PTP) Edits, Practitioner",
+  "version": "v32.3",
+  "url": "https://www.cms.gov/medicare/coding-billing/national-correct-coding-initiative-ncci-edits/medicare-ncci-procedure-procedure-ptp-edits",
+  "built_from": "data/rules-findings.json",
+  "pairs": [
+    {
+      "column1": "00140",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "1996-01-01",
+      "rationale": "Standard preparation/monitoring services for anesthesia"
+    },
+    {
+      "column1": "00920",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "1996-01-01",
+      "rationale": "Standard preparation/monitoring services for anesthesia"
+    },
+    {
+      "column1": "10060",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "10120",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "11406",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "12001",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "12013",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "29075",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "29130",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "29405",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "33967",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "36556",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "45300",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "46600",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "51702",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "51741",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "55040",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "64612",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "66710",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "67820",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "75572",
+      "column2": "75571",
+      "modifier_indicator": 1,
+      "effective_date": "2010-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "75574",
+      "column2": "75571",
+      "modifier_indicator": 1,
+      "effective_date": "2010-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "75574",
+      "column2": "75572",
+      "modifier_indicator": 1,
+      "effective_date": "2010-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "78451",
+      "column2": "96374",
+      "modifier_indicator": 1,
+      "effective_date": "2010-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "78452",
+      "column2": "96374",
+      "modifier_indicator": 1,
+      "effective_date": "2010-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "90935",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92950",
+      "column2": "94002",
+      "modifier_indicator": 1,
+      "effective_date": "2011-04-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92950",
+      "column2": "96361",
+      "modifier_indicator": 1,
+      "effective_date": "2016-04-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "92950",
+      "column2": "96365",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92950",
+      "column2": "96374",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92950",
+      "column2": "96375",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92950",
+      "column2": "96376",
+      "modifier_indicator": 1,
+      "effective_date": "2009-07-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92960",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2008-07-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92960",
+      "column2": "96372",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "92960",
+      "column2": "99234",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "93015",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "1996-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93015",
+      "column2": "96372",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93015",
+      "column2": "99203",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "93015",
+      "column2": "99204",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "93015",
+      "column2": "99213",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "93015",
+      "column2": "99214",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "93015",
+      "column2": "99234",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "Misuse of Column Two code with Column One code"
+    },
+    {
+      "column1": "93224",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "HCPCS/CPT procedure code definition"
+    },
+    {
+      "column1": "93268",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "HCPCS/CPT procedure code definition"
+    },
+    {
+      "column1": "93288",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "93289",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "93306",
+      "column2": "96365",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93306",
+      "column2": "96374",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93308",
+      "column2": "93320",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "93308",
+      "column2": "96365",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93308",
+      "column2": "96375",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93350",
+      "column2": "93306",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "HCPCS/CPT procedure code definition"
+    },
+    {
+      "column1": "93350",
+      "column2": "96372",
+      "modifier_indicator": 1,
+      "effective_date": "2009-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93451",
+      "column2": "76000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93451",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93451",
+      "column2": "99234",
+      "modifier_indicator": 1,
+      "effective_date": "2020-10-01",
+      "rationale": "CPT Manual or CMS manual coding instruction"
+    },
+    {
+      "column1": "93454",
+      "column2": "76000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "CPT Separate procedure definition"
+    },
+    {
+      "column1": "93454",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93454",
+      "column2": "96372",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93458",
+      "column2": "76000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93567",
+      "column2": "76000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    },
+    {
+      "column1": "93567",
+      "column2": "93000",
+      "modifier_indicator": 1,
+      "effective_date": "2011-01-01",
+      "rationale": "Standards of medical/surgical practice"
+    }
+  ]
+}
