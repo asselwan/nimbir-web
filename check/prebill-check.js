@@ -9,9 +9,9 @@
     { slug: 'ecg-holter', label: 'ECG with Holter (synthetic)', text: '93000\n93224' }
   ];
   const actionText = {
-    bundled_no_modifier: 'NCCI pays column 1 and denies column 2 for this pair unless an NCCI-associated modifier applies (such as 59, XE, XS, XP, XU, 25 or an anatomic modifier) and the documentation supports it. Review the note before billing; with a code on several lines, each pairing of lines needs it.',
-    modifier_present_needs_documentation: 'An NCCI-associated modifier is on these lines. Before billing, make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
-    never_separately_payable: 'Remove the column 2 line; NCCI allows no modifier for this pair.',
+    bundled_no_modifier: 'Under this edit column 1 is eligible for payment and column 2 is denied, unless an NCCI-associated modifier applies (such as 59, XE, XS, XP, XU, 25 or an anatomic modifier) and the documentation supports it. Review the note before billing; with a code on several lines, each pairing of lines needs it.',
+    modifier_present_needs_documentation: 'An NCCI-associated modifier is on these lines. Before billing, check that it applies to this pair and sits on the right code (25 belongs on the E/M code), and make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
+    never_separately_payable: 'NCCI allows no modifier for this pair: column 2 is not payable with column 1 for the same provider, patient and date. Review the lines before billing.',
     edit_deleted: 'This edit does not apply in this version of the table.'
   };
   const wideMisses = window.matchMedia('(min-width: 700px)');
@@ -207,6 +207,7 @@
       const table = await tableRequest;
       if (id === currentRun) render(check(lines, table), rejected, table);
     } catch {
+      tableRequest = undefined;
       if (id === currentRun) showResult(element('p', 'pb-error', 'Could not load the NCCI table. Press Check before billing to try again.'));
     }
   }

@@ -175,6 +175,7 @@ test('every NCCI-associated modifier counts, other modifiers do not', () => {
 
 test('the action text never tells the biller to drop a line outright', () => {
   const ui = readFileSync(path.join(root, 'check/prebill-check.js'), 'utf8');
-  assert.ok(!/Bill column 1 only/.test(ui));
+  assert.ok(!/Bill column 1 only|Remove the column 2 line|NCCI pays/.test(ui));
+  assert.match(ui, /tableRequest = undefined;\n      if \(id === currentRun\)/);
   assert.match(ui, /same provider/);
 });
