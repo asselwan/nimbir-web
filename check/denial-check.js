@@ -23,9 +23,10 @@
     return node;
   }
 
-  function link(className, label, href) {
+  function link(className, label, href, ctaId) {
     const anchor = element('a', className, label);
     anchor.href = href;
+    if (ctaId) anchor.dataset.ctaId = ctaId;
     return anchor;
   }
 
@@ -131,15 +132,15 @@
   function footer() {
     const foot = element('footer', 'dc-footer');
     const actions = element('div', 'dc-actions');
-    const own = link('dc-own', 'Run it on your own 835', '#' + fileInput.id);
+    const own = link('dc-own', 'Run it on your own 835', '#' + fileInput.id, 'dc_run_own_835');
     own.addEventListener('click', event => {
       event.preventDefault();
       fileControl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
       fileInput.focus();
     });
     actions.append(
-      link('button', 'Start Revenue Floor, USD 199/month', 'https://buy.nomoi.ai/nimbir/revenue_floor'),
-      link('button secondary', 'Request an invoice instead', 'mailto:assel@nomoi.ai?subject=Nimbir%20Revenue%20Floor%20invoice%20request'),
+      link('button', 'Start Revenue Floor, USD 199/month', 'https://buy.nomoi.ai/nimbir/revenue_floor', 'dc_start_revenue_floor'),
+      link('button secondary', 'Request an invoice instead', 'mailto:assel@nomoi.ai?subject=Nimbir%20Revenue%20Floor%20invoice%20request', 'dc_request_invoice'),
       own
     );
     foot.append(element('p', '', 'A person reviews and approves before anything is sent. Nimbir files nothing.'), actions);
