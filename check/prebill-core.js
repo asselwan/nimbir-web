@@ -104,5 +104,13 @@
     };
   }
 
-  return { parseLines, indicatorMeaning, check };
+  function validTable(table) {
+    if (!table || typeof table.version !== 'string' || !/^https:\/\//.test(table.url || '')) return false;
+    if (!Array.isArray(table.pairs) || !table.pairs.length) return false;
+    return table.pairs.every(row => row && /^[A-Z0-9]{5}$/.test(row.column1) && /^[A-Z0-9]{5}$/.test(row.column2) &&
+      [0, 1, 9].includes(row.modifier_indicator) && /^\d{4}-\d{2}-\d{2}$/.test(row.effective_date) &&
+      typeof row.rationale === 'string');
+  }
+
+  return { parseLines, indicatorMeaning, check, validTable };
 });

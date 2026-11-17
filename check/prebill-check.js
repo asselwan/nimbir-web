@@ -174,10 +174,10 @@
   }
 
   async function loadTable() {
-    const response = await fetch('data/ptp-table.json', { mode: 'same-origin' });
+    const response = await fetch('data/ptp-table.json', { mode: 'same-origin', cache: 'no-cache' });
     if (!response.ok) throw new Error('Could not load the NCCI table');
     const table = await response.json();
-    if (!table || !Array.isArray(table.pairs) || !table.pairs.length) throw new Error('NCCI table has no pairs');
+    if (!window.NimbirPrebillCheck.validTable(table)) throw new Error('NCCI table is malformed');
     return table;
   }
 

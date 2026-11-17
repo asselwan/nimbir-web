@@ -179,3 +179,14 @@ test('the action text never tells the biller to drop a line outright', () => {
   assert.match(ui, /tableRequest = undefined;\n      if \(id === currentRun\)/);
   assert.match(ui, /same provider/);
 });
+
+// Fifth Codex review: a malformed table is refused, never read as "not in table".
+test('validTable accepts the shipped table and refuses malformed ones', () => {
+  const { validTable } = core();
+  assert.equal(validTable(table()), true);
+  for (const bad of [null, {}, { pairs: [] }, { version: 'v32.3', pairs: [null] }, { version: 'v32.3', pairs: [{}] },
+    { version: 'v32.3', url: 'https://www.cms.gov/x', pairs: [{ column1: '93224', column2: '93000', modifier_indicator: 5, effective_date: '2011-01-01', rationale: 'x' }] },
+    { url: 'https://www.cms.gov/x', pairs: table().pairs }]) {
+    assert.equal(validTable(bad), false, JSON.stringify(bad));
+  }
+});
