@@ -124,32 +124,33 @@ test('the shipped files carry no banned words', () => {
   }
 });
 
-// Independent-check fixes (Opus verifier, prm_d6f2caa2 v8): the NCCI bypass modifier counts only on the
-// column 2 code, and a code that appears on several lines carries the modifiers of every one of them.
-test('a distinct-service modifier on the column 1 line only does not count as present', () => {
+// Independent-check fixes (Opus verifier, prm_d6f2caa2 v8, after two Codex read-only reviews):
+// CMS accepts the distinct-service modifier on either code of the pair (MLN1783722), and every
+// pair of billed lines is judged on its own, so one modified line never hides an unmodified one.
+test('a distinct-service modifier on either code of the pair counts as present', () => {
   const { parseLines, check } = core();
   const t = table();
-  const onColumnOne = check(parseLines('93224 59\n93000').lines, t);
-  assert.equal(onColumnOne.pairs[0].column1, '93224');
-  assert.equal(onColumnOne.pairs[0].status, 'bundled_no_modifier');
-  assert.equal(onColumnOne.pairs[0].distinctModifierPresent, false);
-  const onColumnTwo = check(parseLines('93224\n93000 59').lines, t);
-  assert.equal(onColumnTwo.pairs[0].status, 'modifier_present_needs_documentation');
-  const reversedInput = check(parseLines('93000 XU\n93224').lines, t);
-  assert.equal(reversedInput.pairs[0].status, 'modifier_present_needs_documentation');
+  for (const text of ['93224 59\n93000', '93224\n93000 59', '93000 XU\n93224']) {
+    const result = check(parseLines(text).lines, t);
+    assert.equal(result.pairs[0].column1, '93224');
+    assert.equal(result.pairs[0].status, 'modifier_present_needs_documentation', text);
+  }
 });
 
-test('the result does not depend on line order when a code repeats with different modifiers', () => {
+test('a repeated code is judged line by line: one unmodified pair of lines flags the pair', () => {
   const { parseLines, check } = core();
   const t = table();
   const a = check(parseLines('93224\n93000\n93000 59').lines, t);
   const b = check(parseLines('93224\n93000 59\n93000').lines, t);
   assert.equal(a.pairs.length, 1);
-  assert.equal(a.pairs[0].status, b.pairs[0].status);
-  assert.equal(a.pairs[0].status, 'modifier_present_needs_documentation');
+  assert.equal(a.pairs[0].status, 'bundled_no_modifier');
+  assert.equal(b.pairs[0].status, 'bundled_no_modifier');
+  assert.deepEqual(a.pairs[0].modifiersPresent, b.pairs[0].modifiersPresent);
+  const covered = check(parseLines('93224\n93000 59\n93000 XU').lines, t);
+  assert.equal(covered.pairs[0].status, 'modifier_present_needs_documentation');
 });
 
-test('the placeholder example puts its modifier on the column 2 code', () => {
+test('the placeholder example shows a modifier on the column 2 code', () => {
   const ui = readFileSync(path.join(root, 'check/prebill-check.js'), 'utf8');
   const placeholder = ui.match(/input\.placeholder = '([^']*)'/)[1].split('\\n');
   const { parseLines, check } = core();

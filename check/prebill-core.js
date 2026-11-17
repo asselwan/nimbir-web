@@ -53,13 +53,15 @@
 
     const { source, version, url } = table;
     const rows = new Map(table.pairs.map(row => [row.column1 + '/' + row.column2, row]));
-    // One entry per code, in first-seen order, carrying the modifiers of every line that bills it,
-    // so a repeated code gives the same result whatever order its lines are in.
+    // One entry per code, in first-seen order, holding the modifier list of every line that bills it.
+    // A pair counts as modified only when every pairing of its lines has a distinct-service modifier on
+    // one of the two lines (CMS accepts it on either code), so one modified line never hides an unmodified one.
     const codes = new Map();
     for (const line of lines) {
-      if (!codes.has(line.cpt)) codes.set(line.cpt, new Set());
-      for (const modifier of line.modifiers) codes.get(line.cpt).add(modifier);
+      if (!codes.has(line.cpt)) codes.set(line.cpt, []);
+      codes.get(line.cpt).push(line.modifiers);
     }
+    const hasDistinct = modifiers => modifiers.some(modifier => distinctModifiers.has(modifier));
     const unique = [...codes.keys()];
     const pairs = [];
     const unpaired = [];
@@ -74,9 +76,10 @@
         }
 
         const { column1, column2, modifier_indicator: modifierIndicator, rationale, effective_date } = row;
-        const modifiersPresent = [column1, column2].flatMap(code => [...codes.get(code)].map(modifier => modifier + ' on ' + code));
-        // The NCCI bypass modifier belongs on the column 2 (bundled) code; one on the column 1 line only does not count.
-        const distinctModifierPresent = [...codes.get(column2)].some(modifier => distinctModifiers.has(modifier));
+        const modifiersPresent = [column1, column2].flatMap(code =>
+          [...new Set(codes.get(code).flat())].sort().map(modifier => modifier + ' on ' + code));
+        const distinctModifierPresent = codes.get(column1).every(left =>
+          codes.get(column2).every(right => hasDistinct(left) || hasDistinct(right)));
         pairs.push({
           column1, column2, modifierIndicator,
           meaning: indicatorMeaning(modifierIndicator),
