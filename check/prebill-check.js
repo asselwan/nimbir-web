@@ -9,8 +9,8 @@
     { slug: 'ecg-holter', label: 'ECG with Holter (synthetic)', text: '93000\n93224' }
   ];
   const actionText = {
-    bundled_no_modifier: 'Bill column 1 only, or add a distinct-service modifier to one code of the pair only when the documentation shows a separate site, session or encounter. With a code on several lines, each pairing of lines needs it.',
-    modifier_present_needs_documentation: 'A distinct-service modifier is on these lines. Before billing, make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
+    bundled_no_modifier: 'NCCI pays column 1 and denies column 2 for this pair unless an NCCI-associated modifier applies (such as 59, XE, XS, XP, XU, 25 or an anatomic modifier) and the documentation supports it. Review the note before billing; with a code on several lines, each pairing of lines needs it.',
+    modifier_present_needs_documentation: 'An NCCI-associated modifier is on these lines. Before billing, make sure the note documents why the services were separate; the modifier alone does not carry the claim.',
     never_separately_payable: 'Remove the column 2 line; NCCI allows no modifier for this pair.',
     edit_deleted: 'This edit does not apply in this version of the table.'
   };
@@ -70,7 +70,7 @@
   mount.append(
     element('p', 'pb-eyebrow', 'PRE-BILL CHECK'),
     title,
-    element('p', 'pb-intro', 'Paste the CPT lines you are about to bill, one per line, modifiers after the code. Everything runs in this browser tab; nothing is uploaded. Codes and modifiers only, no dates, no patient fields.'),
+    element('p', 'pb-intro', 'Paste the CPT lines the same provider is about to bill for one patient on one date of service, one per line, modifiers after the code. Everything runs in this browser tab; nothing is uploaded. Codes and modifiers only, no dates, no patient fields.'),
     controls,
     result
   );

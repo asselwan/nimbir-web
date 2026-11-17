@@ -158,3 +158,23 @@ test('the placeholder example shows a modifier on the column 2 code', () => {
   assert.equal(result.pairs.length, 1);
   assert.equal(result.pairs[0].status, 'modifier_present_needs_documentation');
 });
+
+// Third Codex review: the bypass set is CMS's full list of NCCI-associated modifiers, not five.
+test('every NCCI-associated modifier counts, other modifiers do not', () => {
+  const { parseLines, check } = core();
+  const t = table();
+  const em = check(parseLines('93015\n99213 25').lines, t);
+  assert.equal(em.pairs[0].status, 'modifier_present_needs_documentation');
+  for (const modifier of ['24', '27', '57', '58', '78', '79', '91', 'RT', 'LT', 'F1', 'TA', 'E1', 'XP']) {
+    assert.equal(check(parseLines('93224\n93000 ' + modifier).lines, t).pairs[0].status, 'modifier_present_needs_documentation', modifier);
+  }
+  for (const modifier of ['26', 'TC', 'GA', 'Q0']) {
+    assert.equal(check(parseLines('93224\n93000 ' + modifier).lines, t).pairs[0].status, 'bundled_no_modifier', modifier);
+  }
+});
+
+test('the action text never tells the biller to drop a line outright', () => {
+  const ui = readFileSync(path.join(root, 'check/prebill-check.js'), 'utf8');
+  assert.ok(!/Bill column 1 only/.test(ui));
+  assert.match(ui, /same provider/);
+});

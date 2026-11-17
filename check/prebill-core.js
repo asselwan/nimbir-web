@@ -7,7 +7,14 @@
 })(globalThis, function () {
   'use strict';
 
-  const distinctModifiers = new Set(['59', 'XE', 'XS', 'XP', 'XU']);
+  // CMS NCCI-associated modifiers for PTP edits with modifier indicator 1 (NCCI Policy Manual, Chapter I):
+  // anatomic E1-E4, FA, F1-F9, LC, LD, LM, LT, RC, RI, RT, TA, T1-T9; global surgery 24, 25, 57, 58, 78, 79;
+  // other 27, 59, 91, XE, XS, XP, XU.
+  const distinctModifiers = new Set([
+    'E1', 'E2', 'E3', 'E4', 'FA', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9',
+    'LC', 'LD', 'LM', 'LT', 'RC', 'RI', 'RT', 'TA', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9',
+    '24', '25', '57', '58', '78', '79', '27', '59', '91', 'XE', 'XS', 'XP', 'XU'
+  ]);
 
   function parseLines(text) {
     const lines = [];
@@ -32,7 +39,7 @@
   function indicatorMeaning(indicator) {
     switch (indicator) {
       case 0: return 'Never billed together on the same date of service; no modifier unbundles this pair.';
-      case 1: return 'Bundled by default; billable separately only with a distinct-service modifier (59, XE, XS, XP, XU) when the documentation supports it.';
+      case 1: return 'Bundled by default; billable separately only with an NCCI-associated modifier (such as 59, XE, XS, XP, XU, 25 or an anatomic modifier) when the documentation supports it.';
       case 9: return 'Edit deleted or not applicable in this version.';
       default: return 'Indicator not in this build of the table.';
     }
@@ -54,7 +61,7 @@
     const { source, version, url } = table;
     const rows = new Map(table.pairs.map(row => [row.column1 + '/' + row.column2, row]));
     // One entry per code, in first-seen order, holding the modifier list of every line that bills it.
-    // A pair counts as modified only when every pairing of its lines has a distinct-service modifier on
+    // A pair counts as modified only when every pairing of its lines has an NCCI-associated modifier on
     // one of the two lines (CMS accepts it on either code), so one modified line never hides an unmodified one.
     const codes = new Map();
     for (const line of lines) {
