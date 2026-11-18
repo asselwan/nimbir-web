@@ -190,7 +190,7 @@
     const { parseLines, check } = window.NimbirPrebillCheck;
     const { lines, rejected } = parseLines(input.value);
     if (lines.length > 200) {
-      showResult(element('p', 'pb-error', 'More than 200 lines. Check in batches of 200.'));
+      showResult(element('p', 'pb-error', 'This check takes up to 200 lines at a time. Lines in different batches are not compared with each other.'));
       return;
     }
     if (!lines.length) {

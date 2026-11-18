@@ -107,9 +107,17 @@
   function validTable(table) {
     if (!table || typeof table.version !== 'string' || !/^https:\/\//.test(table.url || '')) return false;
     if (!Array.isArray(table.pairs) || !table.pairs.length) return false;
-    return table.pairs.every(row => row && /^[A-Z0-9]{5}$/.test(row.column1) && /^[A-Z0-9]{5}$/.test(row.column2) &&
-      [0, 1, 9].includes(row.modifier_indicator) && /^\d{4}-\d{2}-\d{2}$/.test(row.effective_date) &&
-      typeof row.rationale === 'string');
+    const code = value => typeof value === 'string' && /^[A-Z0-9]{5}$/.test(value);
+    const seen = new Set();
+    return table.pairs.every(row => {
+      if (!row || !code(row.column1) || !code(row.column2) || row.column1 === row.column2) return false;
+      if (![0, 1, 9].includes(row.modifier_indicator) || typeof row.rationale !== 'string') return false;
+      if (typeof row.effective_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(row.effective_date)) return false;
+      const key = [row.column1, row.column2].sort().join('/');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   return { parseLines, indicatorMeaning, check, validTable };

@@ -186,7 +186,9 @@ test('validTable accepts the shipped table and refuses malformed ones', () => {
   assert.equal(validTable(table()), true);
   for (const bad of [null, {}, { pairs: [] }, { version: 'v32.3', pairs: [null] }, { version: 'v32.3', pairs: [{}] },
     { version: 'v32.3', url: 'https://www.cms.gov/x', pairs: [{ column1: '93224', column2: '93000', modifier_indicator: 5, effective_date: '2011-01-01', rationale: 'x' }] },
-    { url: 'https://www.cms.gov/x', pairs: table().pairs }]) {
+    { url: 'https://www.cms.gov/x', pairs: table().pairs },
+    { version: 'v32.3', url: 'https://www.cms.gov/x', pairs: [table().pairs[0], table().pairs[0]] },
+    { version: 'v32.3', url: 'https://www.cms.gov/x', pairs: [Object.assign({}, table().pairs[0], { column1: ['93224'] })] }]) {
     assert.equal(validTable(bad), false, JSON.stringify(bad));
   }
 });
