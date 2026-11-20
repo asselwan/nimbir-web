@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nimbir: first medication reconciliation test case</title><meta name="description" content="The case we would hand Nimbir first to test the quality of its medication reconciliation: a synthetic 84-year-old heart-failure discharge with five planted discrepancy types and a gold answer key."><link rel="canonical" href="https://nimbir.com/medrec-first-case.html"><link rel="icon" href="brand/nimbir-mark.svg"><link rel="stylesheet" href="surface.css"><style>
+.medrec-hero{padding:28px 0 8px}
+.medrec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:18px 0}
+.medrec-grid .panel{margin:0}
+.medrec-list{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
+.medrec-list li{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.medrec-list li:last-child{border-bottom:none}
+.medrec-list .m-name{font-weight:600}
+.medrec-list .m-dose{color:var(--muted);white-space:nowrap}
+.medrec-list li.hit{background:#fdf2f2}
+.medrec-key{counter-reset:key}
+.medrec-key>li{margin:8px 0;padding-left:34px;position:relative;list-style:none}
+.medrec-key>li:before{counter-increment:key;content:counter(key);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.medrec-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--teal);background:#eefaf2;border:1px solid #c5e9d4;border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.medrec-why{margin:18px 0}
+</style></head><body class="app"><aside class="rail"><a class="brand light" href="https://nimbir.com/"><img src="brand/nimbir-mark.svg" alt="" width="32">Nimbir</a><span class="rail-label">WORKSPACE</span><a href="https://nimbir.com/">◫ &nbsp; Work queue</a><a class="selected" href="#case">℞ &nbsp; First med-rec case</a><div class="rail-foot">TEST CASE<br>Synthetic · de-identified pattern<br>Available outside the UAE</div></aside><main class="app-main"><div class="app-top"><span>Quality / Medication reconciliation</span><span class="demo">SYNTHETIC · NO REAL PATIENT</span></div>
+<section id="case" class="medrec-hero"><div class="title-row"><div><p class="eyebrow">Medication reconciliation · first test case</p><h1>The polypharmacy heart-failure discharge</h1><p class="sub">When asked which case we would give this system first to test the quality of its medication reconciliation, this is the one: an 84-year-old admitted with decompensated heart failure and atrial fibrillation, discharged home after five days. It is small enough to check line by line in ten minutes, and every classic reconciliation failure mode is in it.</p></div><span class="medrec-tag">ask 67636aa99f8958699443</span></div>
+<div class="panel"><h3>The case, in one paragraph</h3><p>Admitted on eight medications through the emergency department; the admission clerk list, the discharge summary list, and the community pharmacy fill record disagree. The pharmacist's signed reconciliation is the gold answer key below. A reconciler that returns this key exactly — no more, no less — passes. Everything in this case is synthetic; no real patient record is used.</p></div>
+<div class="medrec-grid">
+<div class="panel"><h3>Source A · Admission list (ED clerk)</h3><ul class="medrec-list">
+<li class="hit"><span class="m-name">Metoprolol tartrate 25 mg BID</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Furosemide 40 mg daily</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Warfarin 5 mg daily</span><span class="m-dose">oral</span></li>
+<li class="hit"><span class="m-name">Ibuprofen 400 mg PRN</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Omeprazole 20 mg daily</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Levothyroxine 75 mcg daily</span><span class="m-dose">oral</span></li>
+<li><span class="hit"><span class="m-name">Gliclazide 80 mg daily</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Atorvastatin 40 mg nightly</span><span class="m-dose">oral</span></li>
+</ul></div>
+<div class="panel"><h3>Source B · Discharge summary list</h3><ul class="medrec-list">
+<li><span class="m-name">Bisoprolol 5 mg daily</span><span class="m-dose">oral</span></li>
+<li class="hit"><span class="m-name">Furosemide 40 mg IV BID</span><span class="m-dose">IV</span></li>
+<li class="hit"><span class="m-name">Apixaban 5 mg BID</span><span class="m-dose">oral</span></li>
+<li class="hit"><span class="m-name">Warfarin 5 mg daily</span><span class="m-dose">oral</span></li>
+<li class="hit"><span class="m-name">Omeprazole 20 mg daily</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Levothyroxine 75 mcg daily</span><span class="m-dose">oral</span></li>
+<li><span class="m-name">Atorvastatin 40 mg nightly</span><span class="m-dose">oral</span></li>
+<li><span class="hit"><span class="m-name">Metformin 500 mg BID</span><span class="m-dose">oral</span></li>
+</ul></div>
+<div class="panel"><h3>Source C · Pharmacy fill record</h3><ul class="medrec-list">
+<li><span class="m-name">Bisoprolol 5 mg daily</span><span class="m-dose">dispensed</span></li>
+<li class="hit"><span class="m-name">Furosemide 40 mg tablets</span><span class="m-dose">dispensed</span></li>
+<li class="hit"><span class="m-name">Apixaban 5 mg BID</span><span class="m-dose">dispensed</span></li>
+<li><span class="m-name">Levothyroxine 75 mcg daily</span><span class="m-dose">dispensed</span></li>
+<li><span class="m-name">Atorvastatin 40 mg nightly</span><span class="m-dose">dispensed</span></li>
+<li class="hit"><span class="m-name">Ibuprofen 400 mg PRN</span><span class="m-dose">OTC, self-reported</span></li>
+</ul></div>
+</div>
+<div class="panel medrec-why"><h3>Why this case first</h3><ul class="medrec-key">
+<li><b>It separates lookup from reasoning.</b> Three of the discrepancies (stopped beta-blocker swap, thyroid, statin) are pure list-matching a script can do; the rest need clinical judgement. A system that only matches strings fails visibly.</li>
+<li><b>It contains the highest-harm error class.</b> Duplicate anticoagulation (apixaban + warfarin both on the discharge list) is the discrepancy most likely to kill a patient if reconciliation misses it. Test the dangerous case first, not the easy one.</li>
+<li><b>It needs outside knowledge the lists don't contain.</b> The patient's eGFR is 28 mL/min, so apixaban 5 mg BID is a renal-dose error requiring 2.5 mg BID. A reconciler must either read the chart's labs or say it cannot decide — inventing a dose is an automatic fail.</li>
+<li><b>Every discrepancy type is represented once.</b> Omission, commission, dose, route (IV furosemide sent home), duplication (omeprazole over-the-counter overlap), and an interaction pair (ibuprofen + furosemide + apixaban) — one case covers the whole taxonomy.</li>
+<li><b>It has a 7-line gold key.</b> Small enough that a reviewer can verify the reconciler's output by hand in minutes, which is the only honest way to score reconciliation quality.</li>
+</ul></div>
+<div class="panel"><h3>Gold answer key (pharmacist-signed reconciliation)</h3><ol class="medrec-key">
+<li><b>Stop warfarin.</b> Apixaban replaces it (source B carries both) — duplicate anticoagulation is the single highest-risk item in the case.</li>
+<li><b>Change apixaban to 2.5 mg BID.</b> eGFR 28 mL/min with age ≥ 80 meets the dose-reduction criteria; 5 mg BID on the discharge summary is a renal dosing error.</li>
+<li><b>Confirm metoprolol tartrate was intentionally switched to bisoprolol.</b> A beta-blocker swap at discharge is plausible but must be an explicit decision, not a transcription slip.</li>
+<li><b>Convert furosemide to oral before discharge.</b> 40 mg IV BID is an inpatient order; the pharmacy fill (40 mg tablets) shows what was actually sent home — align the discharge list to it.</li>
+<li><b>Stop ibuprofen.</b> NSAID with heart failure, diuretic, and anticoagulant; it appears only in the pharmacy's self-reported OTC record, the source a list-only reconciler never sees.</li>
+<li><b>Stop gliclazide.</b> On the admission list only; no diabetes diagnosis in the encounter — an omission-type error carried forward from a stale list.</li>
+<li><b>Clarify metformin.</b> Appears on the discharge list with no prior history and no fill; either a new start that needs documentation or a wrong-patient line. Note eGFR 28 is itself a caution for metformin.</li>
+</ol>
+<p class="sub">Continued unchanged: levothyroxine 75 mcg, atorvastatin 40 mg. A passing reconciler returns exactly these seven items with their source evidence, lists the two unchanged drugs, and invents nothing else.</p></div>
+<div class="panel"><h3>Scoring</h3><p>Each key item is a pass/fail unit: found with correct action and cited source = pass; missed, wrong action, or any invented item = fail for that item. Seven of seven with zero inventions is the bar for calling medication reconciliation good enough to try on a second case. <b>This page is the test case definition; it is not a medical recommendation, and Nimbir output on it must be human-reviewed before anything is sent.</b></p></div>
+<footer>First test case · ask 67636aa99f8958699443 · synthetic, no real patient data · AI-assisted, human-reviewed · Available outside the UAE</footer></main></body></html>
