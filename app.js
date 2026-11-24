@@ -814,12 +814,12 @@ async function loadGodsEye() {
     const { book, was, vectors, ranked, mix, movement } = view;
     document.getElementById('ge-total').textContent = geNumber(book.totalCents);
     const buckets = Object.entries(book.buckets).map(([name, value]) => ({ name, ...value }));
-    target.innerHTML = `<div class="ge-section-label"><span>01 / BOOK TRAJECTORY</span><span>IS → SHOULD · WAS · DEVIATION</span></div>
+    target.innerHTML = `<div class="ge-moved"><span>WHAT MOVED</span><p>${movement}</p></div>
+      <details class="ge-details">
+      <summary>Details — book trajectory, remit timing, payer vectors, risk-ranked review, book mix</summary>
+      <div class="ge-section-label"><span>01 / BOOK TRAJECTORY</span><span>IS → SHOULD · WAS · DEVIATION</span></div>
       <div class="ge-metrics">${geMetric('In flight · claim net', book.totalCents, null, was.totalCents)}${geMetric('First remittance recorded', book.remittedCents, book.totalCents, was.remittedCents)}${geMetric('No first remittance recorded', book.outstandingCents, 0, was.outstandingCents)}${geMetric('Median time to first remit', book.medianDays, 30, was.medianDays, 'days')}${geMetric('90+ days to first remit', book.buckets['90+'].netCents, 0, was.buckets['90+'].netCents)}</div>
       <p class="ge-caveat">Targets are guideposts, not observed outcomes. “No first remittance recorded” does not establish an unpaid balance. Earlier half = first 30 claims by submission date, missing dates last.</p>
-      <div class="ge-moved"><span>WHAT MOVED</span><p>${movement}</p></div>
-      <details class="ge-details">
-      <summary>Details — remit timing, payer vectors, risk-ranked review, book mix</summary>
       <div class="ge-grid"><article class="ge-card"><div class="ge-section-label"><span>REMIT TIMING / CLAIM NET</span><span>60 CLAIMS</span></div>${geBars(buckets, book.totalCents)}<p class="ge-caveat">Unknown timing: ${book.unknownDateCount} claims · ${geNumber(book.buckets.Unknown.netCents)} net units. Unknown claim net: ${book.unknownNetCount}.</p></article>
       <article class="ge-card"><div class="ge-section-label"><span>02 / PAYER VECTORS</span><span>EARLIER → LATER</span></div><div class="ge-payers">${vectors.map(v => `<div class="ge-payer"><div><span class="ge-payer-name">${v.payer}</span><span class="ge-arrow ${v.direction}" aria-label="${v.direction}">${v.direction === 'improving' ? '↘' : v.direction === 'worsening' ? '↗' : v.direction === 'flat' ? '→' : '?'}</span></div><strong>${geDays(v.medianDays)}</strong><small>${v.count} claims · ${geNumber(v.netCents)} net units</small><small>${v.changeDays == null ? 'Movement unknown' : `${v.direction} · ${Math.abs(v.changeDays)} d shift`} · at-risk share unknown</small></div>`).join('')}</div><p class="ge-caveat">Payer codes are source labels. Queue risk cannot be assigned to these payers: the files have no shared claim IDs.</p></article></div>
 

@@ -132,6 +132,7 @@ tbody tr[data-state] td:first-child{box-shadow:inset 3px 0 0 transparent}tbody t
 .queue-more:hover{border-color:var(--teal)}
 .queue-more[hidden]{display:none}
 /* Book trajectory: the grounded lines stay open, the rest is behind a toggle. */
+.ge-content>.ge-moved:first-child{border-top:0;margin-top:22px;padding-top:0}
 .ge-details{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
 .ge-details>summary{cursor:pointer;color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 0}
 .ge-details>summary:hover{color:var(--ink)}
