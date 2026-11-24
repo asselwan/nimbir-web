@@ -1,4 +1,8 @@
 import { godsEye } from './gods-eye.js';
+// Build marker (prm_28626d25 v49): lets a deploy be proven from the served
+// bytes alone, whichever cache layer answers the request.
+const BUILD = 'prm_28626d25-v49';
+window.NIMBIR_BUILD = BUILD;
 let claims = [];
 let source = null;
 let filter = 'All';
