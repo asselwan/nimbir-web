@@ -42,12 +42,17 @@
   const controls = element('div', 'dc-controls');
   controls.setAttribute('role', 'group');
   controls.setAttribute('aria-label', 'Remittance scenarios');
-  const fileInput = element('input', 'dc-file-input');
-  fileInput.type = 'file';
-  fileInput.id = 'denial-check-file';
-  fileInput.accept = '.835,.edi,.txt,text/plain';
-  const fileControl = element('label', 'dc-file');
-  fileControl.append(fileInput, element('span', 'dc-chip', 'Use your own 835'));
+  // One drop zone on the page: this chip links to it, and runs the check on the
+  // file already dropped there when there is one.
+  const ownChip = element('a', 'dc-chip', 'Use your own 835');
+  ownChip.href = '#x12-dropzone';
+  ownChip.dataset.ctaId = 'dc_use_own_835';
+  ownChip.addEventListener('click', event => {
+    const dropped = window.Nimbir835Dropzone && window.Nimbir835Dropzone.getLastFile ? window.Nimbir835Dropzone.getLastFile() : null;
+    if (!dropped) return;
+    event.preventDefault();
+    run(dropped.name, () => Promise.resolve(dropped.text));
+  });
 
   const chips = new Map();
   for (const scenario of scenarios) {
@@ -59,7 +64,7 @@
     chips.set(scenario.slug, chip);
     controls.append(chip);
   }
-  controls.append(fileControl);
+  controls.append(ownChip);
   const result = element('div', 'dc-result');
   result.id = 'denial-check-result';
   result.setAttribute('aria-live', 'polite');
@@ -132,16 +137,8 @@
   function footer() {
     const foot = element('footer', 'dc-footer');
     const actions = element('div', 'dc-actions');
-    const own = link('dc-own', 'Run it on your own 835', '#' + fileInput.id, 'dc_run_own_835');
-    own.addEventListener('click', event => {
-      event.preventDefault();
-      fileControl.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-      fileInput.focus();
-    });
     actions.append(
-      link('button', 'Start Revenue Floor, USD 199/month', 'https://buy.nomoi.ai/nimbir/revenue_floor', 'dc_start_revenue_floor'),
-      link('button secondary', 'Request an invoice instead', 'mailto:assel@nomoi.ai?subject=Nimbir%20Revenue%20Floor%20invoice%20request', 'dc_request_invoice'),
-      own
+      link('button', 'See the offer \u2014 USD 199/month', '#pricing', 'dc_see_offer')
     );
     foot.append(element('p', '', 'A person reviews and approves before anything is sent. Nimbir files nothing.'), actions);
     return foot;
@@ -238,11 +235,5 @@
     return run(fileName, () => staticFile('x12/fixtures/' + fileName, 'text'), scenario.slug);
   }
 
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-    fileInput.value = '';
-    run(file.name, () => file.text());
-  });
   document.querySelector('[data-dc-run]')?.addEventListener('click', () => runScenario(scenarios[0]));
 })();

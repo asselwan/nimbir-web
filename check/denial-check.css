@@ -67,28 +67,15 @@
   background: var(--mint);
 }
 
-#denial-check .dc-file {
-  position: relative;
-  max-width: 100%;
-  cursor: pointer;
-}
-
-#denial-check .dc-file .dc-chip {
+/* One drop zone on the page: this chip is a link to it. */
+#denial-check a.dc-chip {
   border-color: var(--teal);
   background: var(--paper);
   color: var(--teal);
+  text-decoration: none;
 }
 
-#denial-check .dc-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  clip-path: inset(50%);
-}
-
-#denial-check :is(button, a, summary, [tabindex]):focus-visible,
-#denial-check .dc-file-input:focus-visible + .dc-chip {
+#denial-check :is(button, a, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--teal);
   outline-offset: 3px;
 }
@@ -283,19 +270,8 @@
   margin-top: 12px;
 }
 
-#denial-check .dc-actions .button,
-#denial-check .dc-own {
+#denial-check .dc-actions .button {
   min-height: 44px;
-}
-
-#denial-check .dc-own {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 8px;
-  color: var(--teal);
-  font-size: 13px;
-  font-weight: 750;
-  text-decoration: underline;
 }
 
 #denial-check .dc-error {

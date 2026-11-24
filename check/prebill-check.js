@@ -133,8 +133,7 @@
     const foot = element('footer', 'pb-footer');
     const actions = element('div', 'pb-actions');
     actions.append(
-      link('button', 'Start Revenue Floor, USD 199/month', 'https://buy.nomoi.ai/nimbir/revenue_floor', 'prebill_start_revenue_floor'),
-      link('button secondary', 'Request an invoice instead', 'mailto:assel@nomoi.ai?subject=Nimbir%20Revenue%20Floor%20invoice%20request', 'prebill_request_invoice')
+      link('button', 'See the offer \u2014 USD 199/month', '#pricing', 'prebill_see_offer')
     );
     foot.append(
       element('p', '', 'This build holds ' + table.pairs.length + ' NCCI PTP pairs (practitioner table, ' + table.version +

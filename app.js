@@ -14,6 +14,17 @@ const CLAIM_APPEAL_DRAFTS = {
   'wb-ec98c4ff3f7e14fec76470ec': 'wb-ec98c4ff3f7e14fec76470ec.html'
 };
 const rows = document.getElementById('rows');
+// Phone-first: the claim table shows 8 rows until the reader asks for all of them.
+// The full text of every reason stays in the detail panel.
+const ROW_LIMIT = 8;
+let showAllRows = false;
+const moreButton = document.createElement('button');
+moreButton.type = 'button';
+moreButton.className = 'queue-more';
+moreButton.id = 'queue-more';
+moreButton.hidden = true;
+document.querySelector('.table-wrap').after(moreButton);
+moreButton.addEventListener('click', () => { showAllRows = !showAllRows; render(); });
 const search = document.getElementById('claim-search');
 const sort = document.getElementById('claim-sort');
 const setText = (id, value) => { document.getElementById(id).textContent = value ?? '—'; };
@@ -253,7 +264,9 @@ function render() {
     similarCounts.set(key, (similarCounts.get(key) || 0) + 1);
   }
   visibleQueue = visible;
-  for (const c of visible) {
+  // Only the first rows are rendered until "Show all" is pressed.
+  const shown = showAllRows ? visible : visible.slice(0, ROW_LIMIT);
+  for (const c of shown) {
     const tr = document.createElement('tr');
     tr.tabIndex = 0;
     tr.dataset.state = c.state;
@@ -310,7 +323,9 @@ function render() {
     if (!count) { count = span('chip-count', ''); button.append(count); }
     count.textContent = String(state === 'All' ? searched.length : searched.filter(c => c.state === state).length);
   });
-  setText('queue-count', claims.length ? `Showing ${visible.length} of ${claims.length}` : '');
+  setText('queue-count', claims.length ? `Showing ${shown.length} of ${visible.length} matching \u00b7 ${claims.length} total` : '');
+  moreButton.hidden = visible.length <= ROW_LIMIT;
+  moreButton.textContent = showAllRows ? `Show ${ROW_LIMIT} rows` : `Show all ${visible.length} rows`;
   const empty = document.getElementById('queue-empty');
   empty.classList.remove('is-loading');
   empty.hidden = visible.length > 0;
@@ -668,10 +683,10 @@ async function load() {
     document.getElementById('review-next').disabled = false;
     source.display_label = data.data_kind === 'real_deidentified' ? 'Real de-identified claims, demo purposes' : 'Hand-built de-identified-shape sample, demo purposes';
     document.querySelectorAll('[data-source-label]').forEach(el => { el.textContent = source.display_label; });
-    setText('queue-scope', `Scope: ${claims.length} local encounters · ${source.display_label} · Counts include all records, even when a filter is active.`);
+    setText('queue-scope', `Scope: ${claims.length} local encounters. Counts include all records, even when a filter is active.`);
     setText('report-source', `Scope: ${claims.length} local encounters · Source: ${data.source_note} · Generated locally · No production outcome claim.`);
     render();
-    loadGodsEye();
+    alignToAnchor();
   } catch (error) {
     source = null; claims = []; rows.replaceChildren();
     document.querySelector('.table-wrap').hidden = true;
@@ -689,7 +704,74 @@ async function load() {
     setText('queue-scope', 'Claim-line data unavailable; counts cannot be shown.');
   }
 }
-load();
+// Lazy load (prm_28626d25 v34): the 117 KB claim dataset and the 85 KB trajectory
+// slice are fetched after the first screen is on the paint, or as soon as the
+// reader scrolls near the section that needs them.
+function observeNear(target, run, margin) {
+  if (!target || !('IntersectionObserver' in window)) { run(); return; }
+  const io = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    io.disconnect();
+    run();
+  }, { rootMargin: margin });
+  io.observe(target);
+}
+function afterFirstPaint(run) {
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 250));
+  const go = () => idle(run);
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    requestAnimationFrame(() => requestAnimationFrame(go));
+  } else {
+    document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(() => requestAnimationFrame(go)), { once: true });
+  }
+}
+// ---- rail links must stay correct when a lazy section grows the page ----------
+// The queue table and the trajectory arrive after the first screen. When they
+// do, the page above the reader's target changes height, so the anchor is
+// re-aligned once the new content is in place.
+let anchorTarget = null;
+function alignToAnchor() {
+  if (!anchorTarget) return;
+  const el = document.getElementById(anchorTarget);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+document.addEventListener('click', event => {
+  const link = event.target.closest && event.target.closest('a[href^="#"]');
+  if (!link) return;
+  const id = (link.getAttribute('href') || '').slice(1);
+  if (!id || !document.getElementById(id)) return;
+  event.preventDefault();
+  anchorTarget = id;
+  history.replaceState(null, '', '#' + id);
+  alignToAnchor();
+  setTimeout(alignToAnchor, 250);
+  setTimeout(alignToAnchor, 1500);
+});
+let queueLoadStarted = false;
+let queueReady = Promise.resolve();
+function startQueueLoad() {
+  if (queueLoadStarted) return queueReady;
+  queueLoadStarted = true;
+  queueReady = load();
+  return queueReady;
+}
+observeNear(document.getElementById('queue'), startQueueLoad, '600px 0px');
+afterFirstPaint(startQueueLoad);
+// The trajectory slice needs the queue dataset for its queue snapshot, so the two
+// are started together and the trajectory waits for the dataset.
+// The trajectory slice loads with the first idle window, so the page height
+// settles early and the rail links keep landing on the right section. It also
+// loads when the reader scrolls near it.
+let godsEyeStarted = false;
+function startGodsEye() {
+  if (godsEyeStarted) return;
+  godsEyeStarted = true;
+  startQueueLoad();
+  loadGodsEye();
+}
+observeNear(document.getElementById('gods-eye'), startGodsEye, '400px 0px');
+afterFirstPaint(startGodsEye);
 
 const realAppealLetter = "Draft generated from a real de-identified claim; human review required before submission\n\nTo: Daman Claims Appeals / Provider Relations\nSubject: Request for reconsideration of authorization denial — de-identified claim REAL-001\nService date: 1 August 2020 | Submitted: 4 August 2020 | Remittance: 18 August 2020\nAmount at issue: 15,467.50 in recorded claim net amounts (currency and payable amount to be confirmed)\n\nDear Claims Review Team,\n\nWe request a line-level review of the `AUTH-001` denial on this claim. The remittance assigns that code and zero payment to drug-coded lines `E74-0478-00700-02` (9,557.50) and `E74-0478-00700-01` (5,535.00), and to line `24` (375.00). The same prior authorization reference is recorded on all three denied lines and on the related administration line `96413`. That reference does not, by itself, establish that approval was granted or that its scope matched the services. It does, however, warrant reconciliation with Daman's authorization record before the claim is treated as lacking approval.\n\nDaman circular `PRD/JA/JC/19/UAE-18` (20 March 2019, pages 1–2) sets out the preauthorization workflow for listed specialty drugs in day-case and outpatient care, including the applicable drug and administration or per-diem codes and review of dose, quantity, and medical reports. We are not seeking an exemption from that workflow. Please compare the authorization referenced on the remittance with the authorization decision, effective dates, approved drug codes and quantities, facility, member benefit, and actual service setting for 1 August 2020. Please also confirm whether the denied codes were subject to the controlling specialty-drug list and benefit terms on that date.\n\nIf the authorization covered these billed services and the claim met the applicable coding and benefit rules, please reverse the `AUTH-001` denial and reprocess the three lines. If it did not, please identify the precise missing approval or mismatch for each line, the effective policy provision relied upon, and whether a corrected claim or further clinical documentation is required. This will let the provider address the actual defect instead of resubmitting an unchanged claim.\n\nBefore sending this request, the provider's reviewer should verify the member and claim identifiers, obtain the original authorization decision and any amendments, confirm the drug names and doses behind the billed codes, and attach the treatment order, administration record, and itemized claim where relevant. The diagnosis codes on the claim provide clinical context but are not offered as independent proof of medical necessity or coverage.\n\nSincerely,\nAuthorized provider appeals representative — signature and contact details to be completed after review";
 const realAppealButton = document.getElementById('show-real-appeal');
@@ -715,6 +797,8 @@ function geBars(items, total, nameKey = 'name') {
 async function loadGodsEye() {
   const target = document.getElementById('ge-content');
   try {
+    startQueueLoad();
+    await queueReady;
     const response = await fetch('./nimbir-real-recall-slice-classified.json');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
@@ -726,13 +810,18 @@ async function loadGodsEye() {
     target.innerHTML = `<div class="ge-section-label"><span>01 / BOOK TRAJECTORY</span><span>IS → SHOULD · WAS · DEVIATION</span></div>
       <div class="ge-metrics">${geMetric('In flight · claim net', book.totalCents, null, was.totalCents)}${geMetric('First remittance recorded', book.remittedCents, book.totalCents, was.remittedCents)}${geMetric('No first remittance recorded', book.outstandingCents, 0, was.outstandingCents)}${geMetric('Median time to first remit', book.medianDays, 30, was.medianDays, 'days')}${geMetric('90+ days to first remit', book.buckets['90+'].netCents, 0, was.buckets['90+'].netCents)}</div>
       <p class="ge-caveat">Targets are guideposts, not observed outcomes. “No first remittance recorded” does not establish an unpaid balance. Earlier half = first 30 claims by submission date, missing dates last.</p>
+      <div class="ge-moved"><span>WHAT MOVED</span><p>${movement}</p></div>
+      <details class="ge-details">
+      <summary>Details — remit timing, payer vectors, risk-ranked review, book mix</summary>
       <div class="ge-grid"><article class="ge-card"><div class="ge-section-label"><span>REMIT TIMING / CLAIM NET</span><span>60 CLAIMS</span></div>${geBars(buckets, book.totalCents)}<p class="ge-caveat">Unknown timing: ${book.unknownDateCount} claims · ${geNumber(book.buckets.Unknown.netCents)} net units. Unknown claim net: ${book.unknownNetCount}.</p></article>
       <article class="ge-card"><div class="ge-section-label"><span>02 / PAYER VECTORS</span><span>EARLIER → LATER</span></div><div class="ge-payers">${vectors.map(v => `<div class="ge-payer"><div><span class="ge-payer-name">${v.payer}</span><span class="ge-arrow ${v.direction}" aria-label="${v.direction}">${v.direction === 'improving' ? '↘' : v.direction === 'worsening' ? '↗' : v.direction === 'flat' ? '→' : '?'}</span></div><strong>${geDays(v.medianDays)}</strong><small>${v.count} claims · ${geNumber(v.netCents)} net units</small><small>${v.changeDays == null ? 'Movement unknown' : `${v.direction} · ${Math.abs(v.changeDays)} d shift`} · at-risk share unknown</small></div>`).join('')}</div><p class="ge-caveat">Payer codes are source labels. Queue risk cannot be assigned to these payers: the files have no shared claim IDs.</p></article></div>
-      <div class="ge-moved"><span>WHAT MOVED</span><p>${movement}</p></div>
+
       <div class="ge-grid ge-lower"><article class="ge-card"><div class="ge-section-label"><span>03 / RISK-RANKED REVIEW</span><span>QUEUE SNAPSHOT</span></div><p class="ge-caveat">All 11 scored queue claims have missing amounts, so dollar-weighted exposure is unknown. Listed by recorded demo score; uncalibrated and not expected loss. This is a separate 97-claim queue.</p><ol class="ge-risk-list">${ranked.map((r, i) => `<li><button type="button" data-risk-index="${i}"><span><b>${r.claim.claim_id}</b><small>${r.reason}</small></span><strong>${r.weightedCents == null ? 'Amount unknown' : `AED ${geNumber(r.weightedCents)}`}</strong></button></li>`).join('')}</ol></article>
-      <article class="ge-card"><div class="ge-section-label"><span>04 / BOOK MIX</span><span>NET CONCENTRATION</span></div><h3>Encounter type</h3>${geBars(mix.encounter, book.totalCents)}<h3>Top activity codes</h3>${geBars(mix.activity, book.totalCents)}<p class="ge-caveat">Multiple codes split each claim's net equally; line amounts are unavailable. Unknown activity codes: ${geNumber(mix.unknownActivityCents)} net units.</p></article></div>`;
+      <article class="ge-card"><div class="ge-section-label"><span>04 / BOOK MIX</span><span>NET CONCENTRATION</span></div><h3>Encounter type</h3>${geBars(mix.encounter, book.totalCents)}<h3>Top activity codes</h3>${geBars(mix.activity, book.totalCents)}<p class="ge-caveat">Multiple codes split each claim's net equally; line amounts are unavailable. Unknown activity codes: ${geNumber(mix.unknownActivityCents)} net units.</p></article></div>
+      </details>`;
     target.querySelectorAll('[data-risk-index]').forEach(button => button.addEventListener('click', () => choose(ranked[Number(button.dataset.riskIndex)].claim)));
     animateGodsEye();
+    alignToAnchor();
   } catch (error) {
     target.textContent = 'Trajectory unavailable. Check the local data file and retry loading the page.';
   }

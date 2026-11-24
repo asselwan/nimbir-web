@@ -125,3 +125,14 @@ tbody tr[data-state] td:first-child{box-shadow:inset 3px 0 0 transparent}tbody t
 .rep-actions small{display:block;color:var(--muted);font:500 10px/1.6 "DM Mono",ui-monospace,monospace}
 .rep-answer{border-top:1px solid var(--line);margin-top:16px;padding-top:10px}
 @media(max-width:900px){.rep-grid{grid-template-columns:1fr}.rep-tiles{grid-template-columns:repeat(2,1fr)}}
+
+/* --- slice 1 cleanup (prm_28626d25 v34) --------------------------------- */
+/* Show-all control for the claim table. */
+.queue-more{display:block;width:100%;margin:12px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:13px;font-weight:600;line-height:1.4;cursor:pointer}
+.queue-more:hover{border-color:var(--teal)}
+.queue-more[hidden]{display:none}
+/* Book trajectory: the grounded lines stay open, the rest is behind a toggle. */
+.ge-details{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.ge-details>summary{cursor:pointer;color:var(--muted);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 0}
+.ge-details>summary:hover{color:var(--ink)}
+.ge-details[open]>summary{margin-bottom:12px}
