@@ -780,7 +780,14 @@ realAppealOutput.textContent = realAppealLetter;
 realAppealButton.addEventListener('click', () => { const expanded = realAppealButton.getAttribute('aria-expanded') === 'true'; realAppealButton.setAttribute('aria-expanded', String(!expanded)); realAppealOutput.hidden = expanded; realAppealButton.textContent = expanded ? 'Show full appeal letter' : 'Hide full appeal letter'; });
 
 // --- 835 drop-in hook begin (D-nimbir-835-dropin, prm_35fc4fc2) — all logic lives in app/x12/*.js; this is the only wiring point ---
-if (window.Nimbir835Dropzone) window.Nimbir835Dropzone.init({ getClaims: () => claims, setClaims: v => { claims = v; }, getSource: () => source, setSource: v => { source = v; }, render, reload: load });
+let dropzoneInitialised = false;
+function initDropzone() {
+  if (dropzoneInitialised || !window.Nimbir835Dropzone) return;
+  dropzoneInitialised = true;
+  window.Nimbir835Dropzone.init({ getClaims: () => claims, setClaims: v => { claims = v; }, getSource: () => source, setSource: v => { source = v; }, render, reload: load });
+}
+initDropzone();
+window.addEventListener('nimbir:dropzone-ready', initDropzone);
 // --- 835 drop-in hook end ---
 
 

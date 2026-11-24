@@ -181,4 +181,6 @@
   // The last dropped file is kept so other panels (the denial check) can run on
   // the very same file. There is one drop zone on the page; nothing is uploaded.
   window.Nimbir835Dropzone = { init, getLastFile: () => (lastFileName ? { name: lastFileName, text: lastFileText } : null) };
+  // app.js may run before or after this file, so the readiness is announced.
+  window.dispatchEvent(new CustomEvent('nimbir:dropzone-ready'));
 })();
