@@ -1,4 +1,9 @@
-import { godsEye } from './gods-eye.js';
+// Asset fingerprint (prm_28626d25 v49 follow-up): the version query on the
+// import below, and the ones in index.html, are stamped by
+// scripts/bump-asset-version.sh before every release commit, so a deploy always
+// changes the asset URLs and a browser can never keep running a cached (old)
+// build.
+import { godsEye } from './gods-eye.js?v=1034969';
 // Build marker (prm_28626d25 v49): lets a deploy be proven from the served
 // bytes alone, whichever cache layer answers the request.
 const BUILD = 'prm_28626d25-v49';
