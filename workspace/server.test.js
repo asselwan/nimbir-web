@@ -6,6 +6,102 @@ import { createApp } from './server.js';
 const hospital = '11111111-1111-4111-8111-111111111111';
 const user = '33333333-3333-4333-8333-333333333333';
 
+function post(app, path, body) {
+  return new Promise((resolve) => {
+    const incoming = Readable.from([typeof body === 'string' ? body : JSON.stringify(body)]);
+    incoming.method = 'POST'; incoming.url = path; incoming.headers = {}; incoming.socket = { remoteAddress: '10.9.0.1' };
+    const outgoing = {
+      writeHead(status) { this.status = status; },
+      end(raw) { resolve({ status: this.status, body: typeof raw === 'string' && raw.startsWith('{') ? JSON.parse(raw) : raw }); },
+    };
+    app.emit('request', incoming, outgoing);
+  });
+}
+
+test('clinic sign-up: valid payload is persisted, notifies the founder, and confirms', async () => {
+  const persisted = [];
+  const notified = [];
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async (signup) => { persisted.push(signup); return 'row-1'; },
+    notifySignup: async (signup) => { notified.push(signup); return true; },
+  });
+  const response = await post(app, '/api/clinic-signup', {
+    clinic_name: 'Al Noor Family Clinic', work_email: 'admin@alnoorclinic.ae',
+    phone: '+971 4 555 0100', emirate_country: 'Dubai', monthly_volume_band: '500-2000',
+    specialty: 'Family medicine', current_billing_setup: 'bpo',
+  });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.notified, true);
+  assert.equal(persisted.length, 1);
+  assert.equal(persisted[0].work_email, 'admin@alnoorclinic.ae');
+  assert.deepEqual(notified, persisted);
+});
+
+test('clinic sign-up: invalid payloads get 400 with field-level errors and are never persisted', async () => {
+  const persisted = [];
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async (signup) => { persisted.push(signup); return 'row'; },
+    notifySignup: async () => true,
+  });
+  const response = await post(app, '/api/clinic-signup', { clinic_name: '', work_email: 'nope', phone: 'x', emirate_country: '', monthly_volume_band: 'lots' });
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error, 'Validation failed');
+  assert.ok(response.body.fields.clinic_name);
+  assert.ok(response.body.fields.work_email);
+  assert.ok(response.body.fields.monthly_volume_band);
+  assert.equal(persisted.length, 0);
+  const bad = await post(app, '/api/clinic-signup', 'not json');
+  assert.equal(bad.status, 400);
+});
+
+test('clinic sign-up: honeypot fills are answered with success but nothing is stored or sent', async () => {
+  const persisted = [];
+  const notified = [];
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async (signup) => { persisted.push(signup); return 'row'; },
+    notifySignup: async (signup) => { notified.push(signup); return true; },
+  });
+  const response = await post(app, '/api/clinic-signup', {
+    clinic_name: 'Spam Bot', work_email: 'bot@spam.example', phone: '+971500000000',
+    emirate_country: 'Dubai', monthly_volume_band: 'lt500', company_url: 'http://spam.example',
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { ok: true });
+  assert.deepEqual(persisted, []);
+  assert.deepEqual(notified, []);
+});
+
+test('clinic sign-up: a client is rate limited and the record still lands if the email fails', async () => {
+  const persisted = [];
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async (signup) => { persisted.push(signup); return `row-${persisted.length}`; },
+    notifySignup: async () => { throw new Error('email down'); },
+  });
+  const payload = { clinic_name: 'Clinic', work_email: 'a@b.co', phone: '+971500000001', emirate_country: 'Dubai', monthly_volume_band: 'lt500' };
+  const first = await post(app, '/api/clinic-signup', payload);
+  assert.equal(first.status, 201);
+  assert.equal(first.body.notified, false);
+  assert.equal(first.body.delivery_error, 'email down');
+  assert.equal(persisted.length, 1);
+  // Same client: the default limiter allows 5 per hour total, so with the
+  // first call already spent the fifth loop call is refused.
+  const codes = [];
+  for (let i = 0; i < 6; i += 1) codes.push((await post(app, '/api/clinic-signup', { ...payload, work_email: `x${i}@b.co` })).status);
+  assert.deepEqual(codes, [201, 201, 201, 201, 429, 429]);
+  // If both storage and email fail, the sign-up is never silently dropped.
+  const dead = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async () => { throw new Error('db down'); },
+    notifySignup: async () => { throw new Error('email down'); },
+  });
+  assert.equal((await post(dead, '/api/clinic-signup', payload)).status, 500);
+});
+
 test('API requires verified bearer identity and passes it to tenant-scoped store', async () => {
   const calls = [];
   const app = createApp({

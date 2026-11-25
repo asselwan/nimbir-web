@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createStore, HttpError } from './store.js';
+import { validateClinicSignup, createRateLimiter, signupEmailBody } from '../signup/signup-core.js';
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
 const assets = new Map([
@@ -15,7 +16,7 @@ const assets = new Map([
   ['/workspace/x12/to-work-item.js', ['../x12/to-work-item.js', 'text/javascript; charset=utf-8']],
 ]);
 
-export function createApp({ store, authenticate, signIn, now = () => Date.now() }) {
+export function createApp({ store, authenticate, signIn, now = () => Date.now(), persistSignup, notifySignup, signupLimiter }) {
   // Failed sign-in attempts are throttled per account+client and, separately,
   // per client address. Without this the sign-in endpoint is an unthrottled
   // password oracle.
@@ -30,6 +31,11 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
   // The throttle must not become the attack surface: an attacker who varies the
   // email would otherwise grow this map without limit.
   const maxTrackedKeys = 5000;
+  // Public clinic sign-up: per-client rate limit plus optional injected
+  // persistence/notification so tests drive the route without IO.
+  const limiter = signupLimiter || createRateLimiter();
+  const persist = persistSignup || (() => { throw new HttpError(500, 'Sign-up storage unavailable'); });
+  const notify = notifySignup || (async () => { throw new Error('no notifySignup'); });
   function expire(map, at) {
     for (const [other, record] of map) if (at - record.first >= windowMs) map.delete(other);
   }
@@ -89,6 +95,35 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
         response.end(await readFile(new URL(file, `file://${dir}`)));
         return;
       }
+      if (path === '/api/clinic-signup' && request.method === 'POST') {
+        let raw = '';
+        for await (const chunk of request) {
+          raw += chunk;
+          if (raw.length > 4096) throw new HttpError(413, 'Request too large');
+        }
+        let payload;
+        try { payload = JSON.parse(raw); } catch { throw new HttpError(400, 'Invalid JSON'); }
+        const client = request.socket?.remoteAddress || '';
+        if (!limiter.allow(`signup|${client}`, now())) throw new HttpError(429, 'Too many sign-up requests, try again later');
+        const verdict = validateClinicSignup(payload);
+        // Honeypot: pretend success, store and notify nothing.
+        if (verdict.ok && verdict.honeypot) return send(200, { ok: true });
+        if (!verdict.ok) {
+          const invalid = new Error('Validation failed');
+          invalid.status = 400;
+          invalid.fields = verdict.errors;
+          throw invalid;
+        }
+        // Durable record first, notification second: the row survives even if
+        // the founder email fails (delivery_error is recorded on the row).
+        let id = null;
+        let deliveryError = null;
+        try { id = await persist(verdict.signup) || null; } catch (error) { deliveryError = error.message; }
+        let notified = false;
+        try { notified = await notify(verdict.signup) === true; } catch (error) { deliveryError = deliveryError || error.message; }
+        if (id === null && !notified) throw new HttpError(500, 'Sign-up could not be recorded');
+        return send(201, { ok: true, notified, delivery_error: deliveryError || null });
+      }
       if (!path.startsWith('/api/workspace/')) throw new HttpError(404, 'Not found');
       if (path === '/api/workspace/sign-in' && request.method === 'POST') {
         let raw = '';
@@ -131,7 +166,10 @@ export function createApp({ store, authenticate, signIn, now = () => Date.now() 
       if (request.method === 'PATCH' && parts.length === 3) return send(200, await store.update(hospitalId, userId, parts[2], body));
       throw new HttpError(404, 'Not found');
     } catch (error) {
-      send(error.status || 500, { error: error.status ? error.message : 'Internal error' });
+      const body = error.status
+        ? { error: error.message, ...(error.fields ? { fields: error.fields } : {}) }
+        : { error: 'Internal error' };
+      send(error.status || 500, body);
     }
   });
 }
@@ -152,6 +190,32 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(new URL(
     signIn: async (email, password) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       return error ? null : data.session?.access_token;
+    },
+    persistSignup: async (signup) => {
+      const result = await pool.query(
+        `INSERT INTO nimbir.clinic_signup
+           (clinic_name, work_email, phone, emirate_country, monthly_volume_band, specialty, current_billing_setup)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [signup.clinic_name, signup.work_email, signup.phone, signup.emirate_country,
+          signup.monthly_volume_band, signup.specialty || null, signup.current_billing_setup || null],
+      );
+      return result.rows[0].id;
+    },
+    notifySignup: async (signup) => {
+      const key = process.env.RESEND_API_KEY;
+      if (!key) throw new Error('RESEND_API_KEY not configured');
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          from: process.env.SIGNUP_FROM_EMAIL || 'Nimbir <onboarding@resend.dev>',
+          to: [process.env.SIGNUP_TO_EMAIL || 'assel@nomoi.ai'],
+          subject: `Clinic sign-up: ${signup.clinic_name}`,
+          text: signupEmailBody(signup),
+        }),
+      });
+      if (!response.ok) throw new Error(`Resend ${response.status}`);
+      return true;
     },
   });
   app.listen(Number(process.env.PORT || 3001), '0.0.0.0');
