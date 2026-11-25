@@ -102,12 +102,17 @@
       hooks.render();
     }
 
+    let fileReadRevision = 0;
     function handleFile(file) {
       if (!file) return;
+      const revision = ++fileReadRevision;
       setStatus(`Reading "${file.name}"…`, false);
       const reader = new FileReader();
-      reader.onerror = () => setStatus(`Could not read "${file.name}" from this browser. Showing the default dataset.`, true);
+      reader.onerror = () => {
+        if (fileReadRevision === revision) setStatus(`Could not read "${file.name}" from this browser.`, true);
+      };
       reader.onload = () => {
+        if (fileReadRevision !== revision) return;
         const text = String(reader.result || '');
         try {
           const result = window.NimbirFromX12.fromX12Text(text, { fileName: file.name });
@@ -170,6 +175,7 @@
     }
 
     resetButton.addEventListener('click', () => {
+      fileReadRevision++;
       resetButton.hidden = true;
       setStatus('', false);
       input.value = '';

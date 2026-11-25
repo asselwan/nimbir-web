@@ -3,13 +3,15 @@
 // scripts/bump-asset-version.sh before every release commit, so a deploy always
 // changes the asset URLs and a browser can never keep running a cached (old)
 // build.
-import { godsEye } from './gods-eye.js?v=1034969';
+import { godsEye } from './gods-eye.js?v=qreset-187';
 // Build marker (prm_28626d25 v49): lets a deploy be proven from the served
 // bytes alone, whichever cache layer answers the request.
 const BUILD = 'prm_28626d25-v49';
 window.NIMBIR_BUILD = BUILD;
 let claims = [];
 let source = null;
+let defaultDatasetRequest = null;
+let sourceRevision = 0;
 let filter = 'All';
 let sortBy = 'state';
 let selected = null;
@@ -673,7 +675,28 @@ document.getElementById('export').addEventListener('click', () => {
   a.download = 'nimbir-demo-claim-lines.csv'; a.click();
   window.setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
+async function readDefaultDataset() {
+  const response = await fetch('./claim-lines.json');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  if (!data || !Array.isArray(data.claim_lines) || !['real_deidentified','hand_built_sample'].includes(data.data_kind)) {
+    throw new Error('Invalid dataset shape');
+  }
+  return data;
+}
+
+function getDefaultDataset() {
+  if (!defaultDatasetRequest) {
+    defaultDatasetRequest = readDefaultDataset().catch(error => {
+      defaultDatasetRequest = null;
+      throw error;
+    });
+  }
+  return defaultDatasetRequest;
+}
+
 async function load() {
+  const revision = ++sourceRevision;
   document.querySelector('.table-wrap').hidden = true;
   document.getElementById('queue-empty').hidden = false;
   document.getElementById('queue-empty').classList.add('is-loading');
@@ -682,10 +705,8 @@ async function load() {
   document.getElementById('retry-load').hidden = true;
   document.getElementById('clear-filters').hidden = true;
   try {
-    const response = await fetch('./claim-lines.json');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    if (!data || !Array.isArray(data.claim_lines) || !['real_deidentified','hand_built_sample'].includes(data.data_kind)) throw new Error('Invalid dataset shape');
+    const data = await getDefaultDataset();
+    if (revision !== sourceRevision) return;
     source = data; claims = data.claim_lines;
     document.getElementById('export').disabled = false;
     document.getElementById('run-report').disabled = false;
@@ -697,6 +718,7 @@ async function load() {
     render();
     alignToAnchor();
   } catch (error) {
+    if (revision !== sourceRevision) return;
     source = null; claims = []; rows.replaceChildren();
     document.querySelector('.table-wrap').hidden = true;
     document.getElementById('queue-empty').hidden = false;
@@ -762,7 +784,9 @@ let queueReady = Promise.resolve();
 function startQueueLoad() {
   if (queueLoadStarted) return queueReady;
   queueLoadStarted = true;
-  queueReady = load();
+  // A visitor can import a remittance before this idle callback fires.
+  // Warm the default for Reset without replacing the imported queue.
+  queueReady = source ? getDefaultDataset().catch(() => {}) : load();
   return queueReady;
 }
 observeNear(document.getElementById('queue'), startQueueLoad, '600px 0px');
@@ -793,7 +817,13 @@ let dropzoneInitialised = false;
 function initDropzone() {
   if (dropzoneInitialised || !window.Nimbir835Dropzone) return;
   dropzoneInitialised = true;
-  window.Nimbir835Dropzone.init({ getClaims: () => claims, setClaims: v => { claims = v; }, getSource: () => source, setSource: v => { source = v; }, render, reload: load });
+  window.Nimbir835Dropzone.init({
+    getClaims: () => claims,
+    setClaims: next => { claims = next; },
+    getSource: () => source,
+    setSource: next => { sourceRevision++; source = next; },
+    render, reload: load
+  });
 }
 initDropzone();
 window.addEventListener('nimbir:dropzone-ready', initDropzone);
