@@ -15,4 +15,4 @@ CREATE TABLE IF NOT EXISTS nimbir.clinic_signup (
   source text NOT NULL DEFAULT 'nimbir_web_signup',
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX clinic_signup_created_idx ON nimbir.clinic_signup (created_at DESC);
+CREATE INDEX IF NOT EXISTS clinic_signup_created_idx ON nimbir.clinic_signup (created_at DESC);
