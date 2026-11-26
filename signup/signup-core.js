@@ -49,6 +49,21 @@ export function validateClinicSignup(payload) {
   return { ok: true, signup: out };
 }
 
+// The Coolify proxy terminates connections in front of the workspace service,
+// so the socket address this server sees can be the proxy's own address, not
+// the clinic's. X-Forwarded-For is honoured only when the connection itself
+// comes from a trusted proxy, and only its first hop (the client the proxy
+// actually saw). A spoofed header from any other address is ignored.
+export function resolveClientKey(socketAddress, xff, trustedProxies) {
+  const socket = String(socketAddress || '').replace(/^::ffff:/i, '');
+  const trusted = (trustedProxies || []).map((address) => String(address).replace(/^::ffff:/i, ''));
+  if (trusted.includes(socket)) {
+    const first = String(xff || '').split(',')[0].trim();
+    if (first) return first;
+  }
+  return socket;
+}
+
 // Per-client rate limiter, same windowed-counter shape the workspace sign-in
 // throttle uses. Caps tracked keys so the map itself cannot be grown without
 // limit by address spoofing.

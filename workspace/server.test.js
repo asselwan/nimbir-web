@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
 import { createApp } from './server.js';
+import { createRateLimiter } from '../signup/signup-core.js';
 
 const hospital = '11111111-1111-4111-8111-111111111111';
 const user = '33333333-3333-4333-8333-333333333333';
 
-function post(app, path, body) {
+function post(app, path, body, { headers = {}, remoteAddress = '10.9.0.1' } = {}) {
   return new Promise((resolve) => {
     const incoming = Readable.from([typeof body === 'string' ? body : JSON.stringify(body)]);
-    incoming.method = 'POST'; incoming.url = path; incoming.headers = {}; incoming.socket = { remoteAddress: '10.9.0.1' };
+    incoming.method = 'POST'; incoming.url = path; incoming.headers = headers; incoming.socket = { remoteAddress };
     const outgoing = {
       writeHead(status) { this.status = status; },
       end(raw) { resolve({ status: this.status, body: typeof raw === 'string' && raw.startsWith('{') ? JSON.parse(raw) : raw }); },
@@ -21,9 +22,11 @@ function post(app, path, body) {
 test('clinic sign-up: valid payload is persisted, notifies the founder, and confirms', async () => {
   const persisted = [];
   const notified = [];
+  const marks = [];
   const app = createApp({
     authenticate: async () => null, signIn: async () => null, store: {},
     persistSignup: async (signup) => { persisted.push(signup); return 'row-1'; },
+    markDelivery: async (id, notified, deliveryError) => { marks.push({ id, notified, deliveryError }); },
     notifySignup: async (signup) => { notified.push(signup); return true; },
   });
   const response = await post(app, '/api/clinic-signup', {
@@ -34,9 +37,13 @@ test('clinic sign-up: valid payload is persisted, notifies the founder, and conf
   assert.equal(response.status, 201);
   assert.equal(response.body.ok, true);
   assert.equal(response.body.notified, true);
+  // Only `notified` is returned: the provider error text never reaches the client.
+  assert.deepEqual(Object.keys(response.body).sort(), ['notified', 'ok']);
   assert.equal(persisted.length, 1);
   assert.equal(persisted[0].work_email, 'admin@alnoorclinic.ae');
   assert.deepEqual(notified, persisted);
+  // A successful send is written back onto the row after the email attempt.
+  assert.deepEqual(marks, [{ id: 'row-1', notified: true, deliveryError: null }]);
 });
 
 test('clinic sign-up: invalid payloads get 400 with field-level errors and are never persisted', async () => {
@@ -75,19 +82,23 @@ test('clinic sign-up: honeypot fills are answered with success but nothing is st
   assert.deepEqual(notified, []);
 });
 
-test('clinic sign-up: a client is rate limited and the record still lands if the email fails', async () => {
+test('clinic sign-up: a client is rate limited and a failed send is recorded on the row, not returned', async () => {
   const persisted = [];
+  const marks = [];
   const app = createApp({
     authenticate: async () => null, signIn: async () => null, store: {},
     persistSignup: async (signup) => { persisted.push(signup); return `row-${persisted.length}`; },
+    markDelivery: async (id, notified, deliveryError) => { marks.push({ id, notified, deliveryError }); },
     notifySignup: async () => { throw new Error('email down'); },
   });
   const payload = { clinic_name: 'Clinic', work_email: 'a@b.co', phone: '+971500000001', emirate_country: 'Dubai', monthly_volume_band: 'lt500' };
   const first = await post(app, '/api/clinic-signup', payload);
   assert.equal(first.status, 201);
   assert.equal(first.body.notified, false);
-  assert.equal(first.body.delivery_error, 'email down');
+  assert.equal('delivery_error' in first.body, false);
   assert.equal(persisted.length, 1);
+  // The provider error text lands on the stored row after the failed attempt.
+  assert.deepEqual(marks, [{ id: 'row-1', notified: false, deliveryError: 'email down' }]);
   // Same client: the default limiter allows 5 per hour total, so with the
   // first call already spent the fifth loop call is refused.
   const codes = [];
@@ -100,6 +111,78 @@ test('clinic sign-up: a client is rate limited and the record still lands if the
     notifySignup: async () => { throw new Error('email down'); },
   });
   assert.equal((await post(dead, '/api/clinic-signup', payload)).status, 500);
+});
+
+test('rate limit keys on the first X-Forwarded-For hop only from the trusted proxy', async () => {
+  const payload = () => ({ clinic_name: 'Clinic', work_email: 'a@b.co', phone: '+971500000001', emirate_country: 'Dubai', monthly_volume_band: 'lt500' });
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    trustedProxies: ['10.0.0.254'],
+    persistSignup: async () => 'row',
+    notifySignup: async () => true,
+  });
+  const viaProxy = (xff) => post(app, '/api/clinic-signup', payload(), {
+    remoteAddress: '10.0.0.254',
+    headers: { 'x-forwarded-for': xff },
+  });
+  // One real client behind the proxy is limited after its 5 submissions…
+  const codes = [];
+  for (let i = 0; i < 6; i += 1) codes.push((await viaProxy('198.51.100.7, 10.0.0.254')).status);
+  assert.deepEqual(codes, [201, 201, 201, 201, 201, 429]);
+  // …while a different client behind the same proxy keeps its own budget:
+  // the key is the first hop the trusted proxy saw, not the proxy address.
+  assert.equal((await viaProxy('198.51.100.8, 10.0.0.254')).status, 201);
+});
+
+test('a spoofed X-Forwarded-For header from an untrusted address is ignored', async () => {
+  const payload = () => ({ clinic_name: 'Clinic', work_email: 'a@b.co', phone: '+971500000001', emirate_country: 'Dubai', monthly_volume_band: 'lt500' });
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    trustedProxies: ['10.0.0.254'],
+    persistSignup: async () => 'row',
+    notifySignup: async () => true,
+  });
+  // A direct client that varies its spoofed header still shares one budget:
+  // the socket address is the key because it is not the trusted proxy.
+  const codes = [];
+  for (let i = 0; i < 6; i += 1) codes.push((await post(app, '/api/clinic-signup', payload(), {
+    remoteAddress: '203.0.113.99',
+    headers: { 'x-forwarded-for': `198.51.100.${i}` },
+  })).status);
+  assert.deepEqual(codes, [201, 201, 201, 201, 201, 429]);
+});
+
+test('a global ceiling caps total sign-up traffic across all clients', async () => {
+  const payload = (i) => ({ clinic_name: 'Clinic', work_email: `c${i}@b.co`, phone: '+971500000001', emirate_country: 'Dubai', monthly_volume_band: 'lt500' });
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    trustedProxies: ['10.0.0.254'],
+    // Small ceiling so the test does not need a hundred requests.
+    signupGlobalLimiter: createRateLimiter({ max: 3 }),
+    persistSignup: async () => 'row',
+    notifySignup: async () => true,
+  });
+  const codes = [];
+  for (let i = 0; i < 5; i += 1) {
+    // A fresh client behind the trusted proxy every time: no per-client key
+    // is ever exhausted, only the global budget can refuse.
+    codes.push((await post(app, '/api/clinic-signup', payload(i), {
+      remoteAddress: '10.0.0.254',
+      headers: { 'x-forwarded-for': `198.51.100.${i}, 10.0.0.254` },
+    })).status);
+  }
+  assert.deepEqual(codes, [201, 201, 201, 429, 429]);
+});
+
+test('the request body is collected as Buffers with a byte cap', async () => {
+  const app = createApp({
+    authenticate: async () => null, signIn: async () => null, store: {},
+    persistSignup: async () => 'row',
+    notifySignup: async () => true,
+  });
+  const big = JSON.stringify({ clinic_name: 'x'.repeat(5000), work_email: 'a@b.co' });
+  const response = await post(app, '/api/clinic-signup', big);
+  assert.equal(response.status, 413);
 });
 
 test('API requires verified bearer identity and passes it to tenant-scoped store', async () => {
